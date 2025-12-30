@@ -64,7 +64,7 @@ export interface LeanCanvas {
 }
 
 export interface PPRData {
-  templateFile: File | null;
+  templateFile: Blob | File | null;
   projectName: string;
   clientName: string;
   productSummary: string;

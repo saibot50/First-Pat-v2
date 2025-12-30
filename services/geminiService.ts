@@ -1,8 +1,15 @@
+/// <reference types="vite/client" />
 import { GoogleGenAI, Type } from "@google/genai";
 import { IdeaData, FieldName, CompetitorData, PPRData, PatentJudgement, Financials } from '../types';
 
 // Helper to get a fresh client instance (important for dynamic API keys)
-const getAi = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAi = () => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process.env as any).API_KEY;
+  if (!apiKey) {
+    throw new Error("No API Key found. Please set VITE_GEMINI_API_KEY in your .env.local file.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 // Default conciseness for general fields
 const DEFAULT_LIMIT = 20;
@@ -33,7 +40,7 @@ export const enhanceFieldContent = async (
   try {
     const ai = getAi();
     const context = JSON.stringify(allData);
-    
+
     const prompt = `
       Act as a product consultant.
       Task: Rewrite field "${currentFieldKey}".
@@ -79,7 +86,7 @@ export const researchCompetitors = async (ideaData: IdeaData): Promise<Competito
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -195,62 +202,62 @@ export const generateMarketData = async (ideaData: IdeaData): Promise<{ data: st
     let url = "";
 
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
-        const chunks = response.candidates[0].groundingMetadata.groundingChunks;
-        const webChunk = chunks.find((c: any) => c.web?.uri);
-        if (webChunk) {
-            url = webChunk.web.uri;
-        }
+      const chunks = response.candidates[0].groundingMetadata.groundingChunks;
+      const webChunk = chunks.find((c: any) => c.web?.uri);
+      if (webChunk) {
+        url = webChunk.web.uri;
+      }
     }
 
     if (!url) {
-        const urlMatch = text.match(/https?:\/\/[^\s)]+/);
-        if (urlMatch) {
-            url = urlMatch[0];
-        }
+      const urlMatch = text.match(/https?:\/\/[^\s)]+/);
+      if (urlMatch) {
+        url = urlMatch[0];
+      }
     }
 
     text = text.replace(/\[\d+\]/g, '').trim();
-    
+
     if (text.length > 5) {
-        if (text.length > 250) text = text.substring(0, 247) + "...";
-        if (!url) {
-            url = `https://www.google.com/search?q=${encodeURIComponent(ideaData.title + " market statistics")}`;
-        }
-        return { data: text, url: url };
+      if (text.length > 250) text = text.substring(0, 247) + "...";
+      if (!url) {
+        url = `https://www.google.com/search?q=${encodeURIComponent(ideaData.title + " market statistics")}`;
+      }
+      return { data: text, url: url };
     }
   } catch (e) {
     console.error("Strategy 1 (Search) failed", e);
   }
 
   try {
-      const fallbackPrompt = `
+    const fallbackPrompt = `
           Provide a generic estimate for the market size of the industry related to: "${ideaData.title}".
           Output ONLY a single sentence like: "The [Sector] market is a multi-billion dollar industry globally."
           Do not use markdown.
       `;
-      const fallbackResponse = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: fallbackPrompt
-      });
-      
-      if (fallbackResponse.text) {
-          return {
-              data: fallbackResponse.text.trim(),
-              // Provide a search URL so the user isn't left with an empty field
-              url: `https://www.google.com/search?q=${encodeURIComponent(ideaData.title + " market size")}`
-          };
-      }
+    const fallbackResponse = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: fallbackPrompt
+    });
+
+    if (fallbackResponse.text) {
+      return {
+        data: fallbackResponse.text.trim(),
+        // Provide a search URL so the user isn't left with an empty field
+        url: `https://www.google.com/search?q=${encodeURIComponent(ideaData.title + " market size")}`
+      };
+    }
   } catch (e) {
-      console.error("Strategy 2 (Fallback) failed", e);
+    console.error("Strategy 2 (Fallback) failed", e);
   }
 
   return { data: 'Market data unavailable at this time.', url: '' };
 };
 
 export const generateUVP = async (ideaData: IdeaData): Promise<string> => {
-    try {
-        const ai = getAi();
-        const prompt = `
+  try {
+    const ai = getAi();
+    const prompt = `
             Analyze this product idea:
             Title: ${ideaData.title}
             Solution: ${ideaData.solution}
@@ -265,15 +272,15 @@ export const generateUVP = async (ideaData: IdeaData): Promise<string> => {
             4. Return ONLY the text string.
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: prompt
-        });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt
+    });
 
-        return response.text?.trim() || "";
-    } catch (e) {
-        return "";
-    }
+    return response.text?.trim() || "";
+  } catch (e) {
+    return "";
+  }
 }
 
 export const generateFinancials = async (ideaData: IdeaData): Promise<Financials> => {
@@ -295,21 +302,21 @@ export const generateFinancials = async (ideaData: IdeaData): Promise<Financials
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              rrp: { type: Type.STRING },
-              year3Sales: { type: Type.STRING },
-              addOnItem: { type: Type.STRING },
-              addOnValue: { type: Type.STRING },
-              targetRevenue: { type: Type.STRING }
-            }
+          type: Type.OBJECT,
+          properties: {
+            rrp: { type: Type.STRING },
+            year3Sales: { type: Type.STRING },
+            addOnItem: { type: Type.STRING },
+            addOnValue: { type: Type.STRING },
+            targetRevenue: { type: Type.STRING }
           }
+        }
       }
     });
 
     if (response.text) {
-        const cleanText = cleanJson(response.text);
-        return JSON.parse(cleanText);
+      const cleanText = cleanJson(response.text);
+      return JSON.parse(cleanText);
     }
     throw new Error("No data");
   } catch (e) {
@@ -355,8 +362,8 @@ export const generatePatentJudgement = async (ideaData: IdeaData, pprData: PPRDa
     });
 
     if (response.text) {
-        const cleanText = cleanJson(response.text);
-        return JSON.parse(cleanText);
+      const cleanText = cleanJson(response.text);
+      return JSON.parse(cleanText);
     }
     throw new Error("Failed");
   } catch (error) {
@@ -366,8 +373,8 @@ export const generatePatentJudgement = async (ideaData: IdeaData, pprData: PPRDa
 
 export const generateGenericSuggestion = async (context: string, fieldType: string, maxWords: number = 20): Promise<string> => {
   try {
-     const ai = getAi();
-     const prompt = `
+    const ai = getAi();
+    const prompt = `
      Context: ${context}.
      Suggest entry for: "${fieldType}".
      
@@ -376,7 +383,7 @@ export const generateGenericSuggestion = async (context: string, fieldType: stri
      2. Distinct from Context siblings.
      3. No "tech-savvy".
      `;
-     const response = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -390,7 +397,7 @@ export const generateGenericSuggestion = async (context: string, fieldType: stri
 }
 
 export const generatePatentDescription = async (
-  ideaData: IdeaData, 
+  ideaData: IdeaData,
   extraDetails: { components: string, variations: string }
 ): Promise<string> => {
   try {
@@ -419,7 +426,7 @@ export const generatePatentDescription = async (
       model: 'gemini-3-flash-preview',
       contents: prompt
     });
-    
+
     // Strip any markdown that the model might have still included despite instructions
     return stripMarkdown(response.text?.trim() || "");
   } catch (e) {
@@ -429,19 +436,19 @@ export const generatePatentDescription = async (
 };
 
 export const generateSinglePatentFigure = async (description: string, type: 'main' | 'alt' | 'diagram'): Promise<string> => {
-    try {
-        const ai = getAi();
-        let promptBase = "";
-        
-        if (type === 'main') {
-            promptBase = "Technical patent drawing of the MAIN INVENTION described below. Black and white line art on a PLAIN WHITE BACKGROUND. Numbered components matching the description.";
-        } else if (type === 'alt') {
-            promptBase = "Alternative embodiment technical drawing of the invention described below. Black and white line art on a PLAIN WHITE BACKGROUND.";
-        } else {
-            promptBase = "Block diagram showing the system components and interactions for the invention described below. Black and white schema on a PLAIN WHITE BACKGROUND.";
-        }
-        
-        const finalPrompt = `
+  try {
+    const ai = getAi();
+    let promptBase = "";
+
+    if (type === 'main') {
+      promptBase = "Technical patent drawing of the MAIN INVENTION described below. Black and white line art on a PLAIN WHITE BACKGROUND. Numbered components matching the description.";
+    } else if (type === 'alt') {
+      promptBase = "Alternative embodiment technical drawing of the invention described below. Black and white line art on a PLAIN WHITE BACKGROUND.";
+    } else {
+      promptBase = "Block diagram showing the system components and interactions for the invention described below. Black and white schema on a PLAIN WHITE BACKGROUND.";
+    }
+
+    const finalPrompt = `
           ${promptBase}
           
           STRICT DRAWING RULES:
@@ -452,38 +459,38 @@ export const generateSinglePatentFigure = async (description: string, type: 'mai
           CONTEXT (Invention Description): 
           ${description.substring(0, 800)}
         `;
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-image-preview',
-            contents: {
-                parts: [{ text: finalPrompt }]
-            },
-            config: {
-                imageConfig: {
-                    aspectRatio: "1:1",
-                    imageSize: "1K"
-                }
-            }
-        });
 
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    return `data:image/png;base64,${part.inlineData.data}`;
-                }
-            }
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: {
+        parts: [{ text: finalPrompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "1:1",
+          imageSize: "1K"
         }
-        return "";
-    } catch (e) {
-        console.error("Single image gen failed", e);
-        return "";
+      }
+    });
+
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
     }
+    return "";
+  } catch (e) {
+    console.error("Single image gen failed", e);
+    return "";
+  }
 }
 
 export const generatePatentFigures = async (description: string): Promise<string[]> => {
-    // Generate all 3 sequentially
-    const main = await generateSinglePatentFigure(description, 'main');
-    const alt = await generateSinglePatentFigure(description, 'alt');
-    const diagram = await generateSinglePatentFigure(description, 'diagram');
-    return [main, alt, diagram];
+  // Generate all 3 sequentially
+  const main = await generateSinglePatentFigure(description, 'main');
+  const alt = await generateSinglePatentFigure(description, 'alt');
+  const diagram = await generateSinglePatentFigure(description, 'diagram');
+  return [main, alt, diagram];
 };
