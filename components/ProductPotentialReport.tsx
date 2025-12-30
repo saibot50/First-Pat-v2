@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import JSZip from 'jszip';
+import { jsPDF } from 'jspdf';
 import { IdeaData, PPRData, CompetitorData, PatentJudgement, AppStage } from '../types';
 import { Input } from './ui/Input';
 import { TextArea } from './ui/TextArea';
@@ -13,7 +13,7 @@ import {
   generateFinancials,
   generateUVP
 } from '../services/geminiService';
-import { ArrowLeft, ArrowRight, Upload, FileDown, Phone, Loader2, Sparkles, CheckCircle, Globe, BrainCircuit, RefreshCw, Code, ChevronDown, ChevronUp, AlertTriangle, FileType, Search, PenTool, Mail, PhoneCall } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload, Phone, Loader2, Sparkles, CheckCircle, Globe, BrainCircuit, RefreshCw, Code, ChevronDown, ChevronUp, AlertTriangle, Search, PenTool, Mail, PhoneCall, FileText, FileDown } from 'lucide-react';
 
 interface Props {
   ideaData: IdeaData;
@@ -332,92 +332,225 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
 
   // --- CLIENT SIDE PPTX GENERATION ---
 
-  const escapeXml = (unsafe: string) => {
-    return unsafe.replace(/[<>&'"]/g, (c) => {
-      switch (c) {
-        case '<': return '&lt;';
-        case '>': return '&gt;';
-        case '&': return '&amp;';
-        case '\'': return '&apos;';
-        case '"': return '&quot;';
-        default: return c;
-      }
+  // --- CLIENT SIDE PDF GENERATION ---
+
+  const handleGenerateAndDownloadPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
     });
-  };
 
-  // Creates a regex that finds a key even if it is "shattered" by XML tags
-  const createShatteredRegex = (key: string) => {
-    const safeKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const xmlNoise = "(?:<[^>]+>)*";
-    let pattern = "\\{" + xmlNoise + "\\{" + xmlNoise;
-    for (let i = 0; i < safeKey.length; i++) {
-      pattern += safeKey[i] + xmlNoise;
-    }
-    pattern += "\\}" + xmlNoise + "\\}";
-    return new RegExp(pattern, 'g');
-  };
+    const data = getFlattenedData();
+    const margin = 20;
+    const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
+    const blue = [37, 99, 235]; // #2563eb
+    const slate = [51, 65, 85]; // #334155
 
-  const handleGenerateAndDownload = async () => {
-    if (!pprData.templateFile) {
-      alert("No template file found. Please upload it in the 'Template' step.");
-      return;
-    }
+    const addPageHeader = (title: string) => {
+      // Header Bar
+      doc.setFillColor(blue[0], blue[1], blue[2]);
+      doc.rect(0, 0, pageWidth, 25, 'F');
 
-    setIsGeneratingFile(true);
-    try {
-      const zip = new JSZip();
-      const content = await zip.loadAsync(pprData.templateFile);
-      const data = getFlattenedData();
-      const keys = Object.keys(data).sort((a, b) => b.length - a.length);
+      // Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.text(title, margin, 17);
 
-      // Iterate through all files in the PPTX
-      for (const fileName of Object.keys(content.files)) {
-        if (fileName.match(/\.xml$/)) {
-          let xmlText = await content.file(fileName)?.async("string");
-          if (xmlText) {
-            let modified = false;
-            for (const key of keys) {
-              const val = (data as any)[key] || "";
-              const escapedVal = escapeXml(String(val));
+      // Subtitle/Branding
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text("Innovate Design | Product Potential Report", pageWidth - margin, 16, { align: 'right' });
+    };
 
-              // 1. Try Simple Replacement (Fast)
-              const placeholder = `{{${key}}}`;
-              if (xmlText.includes(placeholder)) {
-                xmlText = xmlText.split(placeholder).join(escapedVal);
-                modified = true;
-              }
+    const addFooter = (pageNum: number) => {
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${pageNum}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.text(`Generated for ${data.client_name}`, margin, pageHeight - 10);
+    };
 
-              // 2. Try Shattered Replacement (Robust)
-              const shatteredRegex = createShatteredRegex(key);
-              if (shatteredRegex.test(xmlText)) {
-                xmlText = xmlText.replace(shatteredRegex, escapedVal);
-                modified = true;
-              }
-            }
-            if (modified) {
-              zip.file(fileName, xmlText);
-            }
-          }
-        }
-      }
+    // --- PAGE 1: COVER ---
+    addPageHeader("Product Potential Report");
+    doc.setTextColor(slate[0], slate[1], slate[2]);
+    doc.setFontSize(40);
+    doc.text(data.project_name, margin, 60);
 
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const safeName = pprData.projectName.replace(/[^a-z0-9]/gi, '_').substring(0, 20) || "Report";
-      a.download = `${safeName}_PPR.pptx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Prepared for: ${data.client_name}`, margin, 80);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin, 90);
 
-    } catch (error) {
-      console.error("Generation failed:", error);
-      alert("An error occurred while generating the file.");
-    } finally {
-      setIsGeneratingFile(false);
-    }
+    doc.setFillColor(248, 250, 252); // bg-slate-50
+    doc.rect(margin, 110, pageWidth - (margin * 2), 60, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Executive Summary", margin + 5, 120);
+    doc.setFont('helvetica', 'normal');
+    const summaryLines = doc.splitTextToSize(data.product_summary, pageWidth - (margin * 2) - 10);
+    doc.text(summaryLines, margin + 5, 130);
+    addFooter(1);
+
+    // --- PAGE 2: TARGET MARKET ---
+    doc.addPage();
+    addPageHeader("Target Market Analysis");
+    doc.setTextColor(slate[0], slate[1], slate[2]);
+
+    const colWidth = (pageWidth - (margin * 2)) / 2;
+
+    // Customer Segments
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Customer Segments", margin, 45);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    [data.customer_1, data.customer_2, data.customer_3].forEach((seg, i) => {
+      if (seg) doc.text(`\u2022 ${seg}`, margin + 5, 55 + (i * 10));
+    });
+
+    // Early Adopters
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Early Adopters", margin + colWidth, 45);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    [data.early_adopter_1, data.early_adopter_2, data.early_adopter_3].forEach((ea, i) => {
+      if (ea) doc.text(`\u2022 ${ea}`, margin + colWidth + 5, 55 + (i * 10));
+    });
+
+    // Market Insight
+    doc.setFillColor(239, 246, 255); // bg-blue-50
+    doc.rect(margin, 100, pageWidth - (margin * 2), 40, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text("Market Data Point", margin + 5, 110);
+    doc.setFont('helvetica', 'normal');
+    const mktLines = doc.splitTextToSize(data.mkt_data, pageWidth - (margin * 2) - 10);
+    doc.text(mktLines, margin + 5, 118);
+    doc.setTextColor(blue[0], blue[1], blue[2]);
+    doc.text(`Source: ${data.mkt_source_url}`, margin + 5, 133);
+    addFooter(2);
+
+    // --- PAGE 3: COMPETITOR OVERVIEW ---
+    doc.addPage();
+    addPageHeader("Competitor Landscape");
+    doc.setTextColor(slate[0], slate[1], slate[2]);
+
+    const compBoxWidth = (pageWidth - (margin * 2) - 10) / 3;
+    [1, 2, 3].forEach((num, i) => {
+      const x = margin + (i * (compBoxWidth + 5));
+      doc.setFillColor(252, 252, 252);
+      doc.rect(x, 40, compBoxWidth, 140, 'S');
+
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text((data as any)[`alt_brand_${num}`] || "Competitor", x + 5, 50);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text((data as any)[`alt_product_name_${num}`] || "", x + 5, 57, { maxWidth: compBoxWidth - 10 });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("Key Features:", x + 5, 80);
+      doc.setFont('helvetica', 'normal');
+      [1, 2, 3].forEach((f, k) => {
+        const feat = (data as any)[`alt_doesjob${num}_${f}`];
+        if (feat) doc.text(`- ${feat}`, x + 5, 87 + (k * 12), { maxWidth: compBoxWidth - 10 });
+      });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("Gaps / Shortcomings:", x + 5, 135);
+      doc.setFont('helvetica', 'normal');
+      [1, 2, 3].forEach((p, k) => {
+        const prob = (data as any)[`alt_prob${num}_${p}`];
+        if (prob) doc.text(`- ${prob}`, x + 5, 142 + (k * 12), { maxWidth: compBoxWidth - 10 });
+      });
+    });
+    addFooter(3);
+
+    // --- PAGE 4: STRATEGY & FINANCIAL ---
+    doc.addPage();
+    addPageHeader("Growth Strategy");
+    doc.setTextColor(slate[0], slate[1], slate[2]);
+
+    // Financials
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Financial Projections", margin, 45);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Primary Product RRP: GBP ${data.ex_rrp}`, margin, 55);
+    doc.text(`Add-on Strategy: ${data.ex_av_item} (+GBP ${data.ex_add_value})`, margin, 65);
+    doc.text(`Target Revenue per Customer: GBP ${data.ex_tgt_rev}`, margin, 75);
+    doc.text(`Est. Year 3 Unit Sales: ${data.ex_yr3_units}`, margin, 85);
+
+    // Forecast
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Customer Growth", margin + colWidth, 45);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Year 1: ${data.cust_yr1} customers`, margin + colWidth, 55);
+    doc.text(`Year 2: ${data.cust_yr2} customers`, margin + colWidth, 65);
+    doc.text(`Year 3: ${data.cust_yr3} customers`, margin + colWidth, 75);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total (3YR): ${data.tot_cust}`, margin + colWidth, 88);
+
+    // UVP
+    doc.setFillColor(30, 41, 59); // slate-800
+    doc.rect(margin, 120, pageWidth - (margin * 2), 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.text("Unique Value Proposition", margin + 5, 132);
+    doc.setFontSize(18);
+    const uvpLines = doc.splitTextToSize(data.uvp, pageWidth - (margin * 2) - 10);
+    doc.text(uvpLines, margin + 5, 145);
+    addFooter(4);
+
+    // --- PAGE 5: BUSINESS PLAN ---
+    doc.addPage();
+    addPageHeader("Lean Business Plan");
+    doc.setTextColor(slate[0], slate[1], slate[2]);
+
+    const items = [
+      { l: "Problem", v: data.lbp_problems },
+      { l: "Solution", v: data.lbp_sol },
+      { l: "UVP", v: data.lbp_uvp },
+      { l: "Channels", v: data.lbp_chan },
+      { l: "Revenue Streams", v: data.lbp_rev_stream },
+      { l: "Cost Structure", v: data.lbp_cost_struc }
+    ];
+
+    items.forEach((item, i) => {
+      const row = Math.floor(i / 2);
+      const col = i % 2;
+      const x = margin + (col * colWidth);
+      const y = 40 + (row * 45);
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text(item.l, x, y);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(item.v, colWidth - 10);
+      doc.text(lines, x, y + 7);
+    });
+    addFooter(5);
+
+    // Download
+    const safeName = data.project_name.replace(/[^a-z0-9]/gi, '_').substring(0, 20) || "Report";
+    const fileName = `${safeName}_PPR.pdf`;
+
+    // Explicit download trigger using blob for better browser compatibility
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
 
@@ -670,18 +803,17 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
               <FileDown className="text-blue-600" /> Downloads
             </h3>
             <p className="text-sm text-slate-600">
-              Click below to generate and download your filled PowerPoint report.
+              Click below to generate and download your professional PDF report.
             </p>
 
             <div className="flex flex-col gap-3 py-4">
               <Button
-                onClick={handleGenerateAndDownload}
-                isLoading={isGeneratingFile}
+                onClick={handleGenerateAndDownloadPDF}
                 size="lg"
-                className="w-full py-4 text-lg"
-                icon={<FileType />}
+                className="w-full py-6 text-xl bg-blue-600 hover:bg-blue-700 shadow-lg text-white font-bold tracking-wide"
+                icon={<FileText size={24} />}
               >
-                {isGeneratingFile ? "Generating Report..." : "Generate & Download Report"}
+                Download Professional Report (PDF)
               </Button>
             </div>
 
