@@ -1,0 +1,11 @@
+{
+  "name": "first-pat-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
