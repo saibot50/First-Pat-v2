@@ -541,16 +541,8 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
     const safeName = data.project_name.replace(/[^a-z0-9]/gi, '_').substring(0, 20) || "Report";
     const fileName = `${safeName}_PPR.pdf`;
 
-    // Explicit download trigger using blob for better browser compatibility
-    const pdfBlob = doc.output('blob');
-    const url = URL.createObjectURL(pdfBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Use jsPDF's built-in save method for reliable downloads
+    doc.save(fileName);
   };
 
 
