@@ -1004,25 +1004,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
           </div>
         </div>
       )}
-      {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-bold text-lg">Report Preview</h3>
-              <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 bg-slate-100 p-4 overflow-auto">
-              <iframe
-                srcDoc={previewHtml}
-                className="w-full h-full bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm]"
-                title="Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
