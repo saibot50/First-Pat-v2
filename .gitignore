@@ -23,6 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.local
+
 # Generated reports
 *.pdf
 *.pptx
