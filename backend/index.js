@@ -5,6 +5,54 @@ import { chromium } from "playwright";
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
+function escapeHtml(s) {
+    return String(s ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function renderReportHtml({ title, content, generatedAt }) {
+    const safeTitle = escapeHtml(title || "Report");
+    const safeContent = escapeHtml(content || "");
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${safeTitle}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 40px; }
+    h1 { margin: 0 0 12px; font-size: 44px; }
+    .meta { color: #6b7280; font-size: 14px; margin-bottom: 18px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px; font-size: 18px; }
+
+    /* Print/PDF */
+    @page { size: A4; margin: 16mm; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <h1>${safeTitle}</h1>
+  <div class="meta">Generated ${escapeHtml(generatedAt)}</div>
+  <div class="card">${safeContent}</div>
+</body>
+</html>`;
+}
+
+app.post("/report/html", async (req, res) => {
+    const title = req.body?.title || "Report";
+    const content = req.body?.content || "";
+    const html = renderReportHtml({ title, content, generatedAt: new Date().toISOString() });
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.status(200).send(html);
+});
+
+
 app.post("/report/pdf", async (req, res) => {
     let browser;
     try {
@@ -17,27 +65,11 @@ app.post("/report/pdf", async (req, res) => {
 
         const page = await browser.newPage();
 
-        const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${String(title).replaceAll("<", "&lt;")}</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 40px; }
-    h1 { margin: 0 0 12px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
-    .meta { color: #6b7280; font-size: 12px; margin-bottom: 16px; }
-    @page { size: A4; margin: 16mm; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <h1>${String(title).replaceAll("<", "&lt;")}</h1>
-  <div class="meta">Generated ${new Date().toISOString()}</div>
-  <div class="card">${String(content).replaceAll("<", "&lt;")}</div>
-</body>
-</html>`;
+        const html = renderReportHtml({
+            title,
+            content,
+            generatedAt: new Date().toISOString(),
+        });
 
         await page.setContent(html, { waitUntil: "networkidle" });
 
