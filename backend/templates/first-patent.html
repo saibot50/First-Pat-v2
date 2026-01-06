@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{project_name}} - Product Potential Report</title>
+    <style>
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8fafc;
+            color: #334155;
+        }
+
+        .page {
+            width: 210mm;
+            height: 297mm;
+            padding: 20mm;
+            margin: 20px auto;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+        }
+
+        .page:last-child {
+            page-break-after: auto;
+        }
+
+        .header-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 25mm;
+            background-color: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 20mm;
+            box-sizing: border-box;
+        }
+
+        .header-title {
+            font-size: 22pt;
+            font-weight: bold;
+        }
+
+        .header-subtitle {
+            position: absolute;
+            right: 20mm;
+            font-size: 10pt;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 10mm;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 8pt;
+        }
+
+        .footer-left {
+            position: absolute;
+            left: 20mm;
+        }
+
+        h1 {
+            font-size: 40pt;
+            color: #334155;
+            margin-top: 40mm;
+            margin-bottom: 20mm;
+        }
+
+        h2 {
+            font-size: 24pt;
+            font-weight: bold;
+            color: #334155;
+            margin-bottom: 10mm;
+        }
+
+        h3 {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 5mm;
+        }
+
+        .section-box {
+            background-color: #f8fafc;
+            padding: 10mm;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 10mm;
+        }
+
+        .blue-box {
+            background-color: #eff6ff;
+            padding: 10mm;
+            border-radius: 4px;
+            border: 1px solid #dbeafe;
+            margin-bottom: 10mm;
+        }
+
+        .dark-box {
+            background-color: #1e293b;
+            color: white;
+            padding: 10mm;
+            border-radius: 4px;
+            margin-bottom: 10mm;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10mm;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5mm;
+        }
+
+        .list-item {
+            margin-bottom: 3mm;
+            padding-left: 5mm;
+            position: relative;
+        }
+
+        .list-item::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+        }
+
+        .competitor-col {
+            border: 1px solid #e2e8f0;
+            padding: 5mm;
+            border-radius: 4px;
+            font-size: 10pt;
+        }
+
+        .competitor-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 2mm;
+            color: #1e293b;
+        }
+
+        .competitor-sub {
+            font-size: 10pt;
+            color: #64748b;
+            margin-bottom: 5mm;
+            min-height: 10mm;
+        }
+
+        .financial-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3mm;
+            border-bottom: 1px dashed #e2e8f0;
+            padding-bottom: 1mm;
+        }
+
+        .lean-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10mm;
+            font-size: 10pt;
+        }
+
+        .lean-item {
+            margin-bottom: 8mm;
+        }
+
+        .lean-header {
+            font-weight: bold;
+            font-size: 12pt;
+            margin-bottom: 2mm;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 1mm;
+        }
+
+        @media print {
+            body {
+                background: none;
+                margin: 0;
+            }
+
+            .page {
+                margin: 0;
+                box-shadow: none;
+                width: 100%;
+                height: 100%;
+                page-break-after: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- PAGE 1: COVER -->
+    <div class="page">
+        <div class="header-bar">
+            <div class="header-title">Product Potential Report</div>
+            <div class="header-subtitle">Innovate Design | Product Potential Report</div>
+        </div>
+
+        <h1>{{project_name}}</h1>
+
+        <div style="font-size: 16pt; margin-bottom: 10mm;">
+            <div>Prepared for: {{client_name}}</div>
+            <div style="margin-top: 5mm; color: #64748b;">Date: {{date}}</div>
+        </div>
+
+        <div class="section-box" style="margin-top: 20mm;">
+            <h2>Executive Summary</h2>
+            <div style="font-size: 12pt; line-height: 1.6;">{{product_summary}}</div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-left">Generated for {{client_name}}</div>
+            Page 1
+        </div>
+    </div>
+
+    <!-- PAGE 2: TARGET MARKET -->
+    <div class="page">
+        <div class="header-bar">
+            <div class="header-title">Target Market Analysis</div>
+            <div class="header-subtitle">Innovate Design | Product Potential Report</div>
+        </div>
+
+        <div style="margin-top: 30mm;"></div>
+
+        <div class="grid-2">
+            <div>
+                <h3>Customer Segments</h3>
+                <div class="list-item">{{customer_1}}</div>
+                <div class="list-item">{{customer_2}}</div>
+                <div class="list-item">{{customer_3}}</div>
+            </div>
+            <div>
+                <h3>Early Adopters</h3>
+                <div class="list-item">{{early_adopter_1}}</div>
+                <div class="list-item">{{early_adopter_2}}</div>
+                <div class="list-item">{{early_adopter_3}}</div>
+            </div>
+        </div>
+
+        <div class="blue-box" style="margin-top: 20mm;">
+            <h3>Market Data Point</h3>
+            <p>{{mkt_data}}</p>
+            <p style="font-size: 9pt; color: #2563eb; margin-top: 5mm;">Source: <a href="{{mkt_source_url}}"
+                    target="_blank" style="color: #2563eb;">{{mkt_source_url}}</a></p>
+        </div>
+
+        <div class="footer">
+            <div class="footer-left">Generated for {{client_name}}</div>
+            Page 2
+        </div>
+    </div>
+
+    <!-- PAGE 3: COMPETITOR LANDSCAPE -->
+    <div class="page">
+        <div class="header-bar">
+            <div class="header-title">Competitor Landscape</div>
+            <div class="header-subtitle">Innovate Design | Product Potential Report</div>
+        </div>
+
+        <div style="margin-top: 30mm;"></div>
+
+        <div class="grid-3">
+            <!-- Competitor 1 -->
+            <div class="competitor-col">
+                <div class="competitor-title">{{alt_brand_1}}</div>
+                <div class="competitor-sub">{{alt_product_name_1}}</div>
+
+                <strong>Key Features:</strong>
+                <div class="list-item">{{alt_doesjob1_1}}</div>
+                <div class="list-item">{{alt_doesjob1_2}}</div>
+                <div class="list-item">{{alt_doesjob1_3}}</div>
+
+                <div style="margin-top: 10mm;"><strong>Gaps / Shortcomings:</strong></div>
+                <div class="list-item">{{alt_prob1_1}}</div>
+                <div class="list-item">{{alt_prob1_2}}</div>
+                <div class="list-item">{{alt_prob1_3}}</div>
+            </div>
+
+            <!-- Competitor 2 -->
+            <div class="competitor-col">
+                <div class="competitor-title">{{alt_brand_2}}</div>
+                <div class="competitor-sub">{{alt_product_name_2}}</div>
+
+                <strong>Key Features:</strong>
+                <div class="list-item">{{alt_doesjob2_1}}</div>
+                <div class="list-item">{{alt_doesjob2_2}}</div>
+                <div class="list-item">{{alt_doesjob2_3}}</div>
+
+                <div style="margin-top: 10mm;"><strong>Gaps / Shortcomings:</strong></div>
+                <div class="list-item">{{alt_prob2_1}}</div>
+                <div class="list-item">{{alt_prob2_2}}</div>
+                <div class="list-item">{{alt_prob2_3}}</div>
+            </div>
+
+            <!-- Competitor 3 -->
+            <div class="competitor-col">
+                <div class="competitor-title">{{alt_brand_3}}</div>
+                <div class="competitor-sub">{{alt_product_name_3}}</div>
+
+                <strong>Key Features:</strong>
+                <div class="list-item">{{alt_doesjob3_1}}</div>
+                <div class="list-item">{{alt_doesjob3_2}}</div>
+                <div class="list-item">{{alt_doesjob3_3}}</div>
+
+                <div style="margin-top: 10mm;"><strong>Gaps / Shortcomings:</strong></div>
+                <div class="list-item">{{alt_prob3_1}}</div>
+                <div class="list-item">{{alt_prob3_2}}</div>
+                <div class="list-item">{{alt_prob3_3}}</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-left">Generated for {{client_name}}</div>
+            Page 3
+        </div>
+    </div>
+
+    <!-- PAGE 4: GROWTH STRATEGY -->
+    <div class="page">
+        <div class="header-bar">
+            <div class="header-title">Growth Strategy</div>
+            <div class="header-subtitle">Innovate Design | Product Potential Report</div>
+        </div>
+
+        <div style="margin-top: 30mm;"></div>
+
+        <div class="grid-2">
+            <div>
+                <h3>Financial Projections</h3>
+                <div class="financial-row"><span>Primary Product RRP</span> <span>GBP {{ex_rrp}}</span></div>
+                <div class="financial-row"><span>Add-on Strategy</span> <span>{{ex_av_item}} (+{{ex_add_value}})</span>
+                </div>
+                <div class="financial-row"><span>Target Revenue / Cust</span> <span>GBP {{ex_tgt_rev}}</span></div>
+                <div class="financial-row"><span>Est. Year 3 Unit Sales</span> <span>{{ex_yr3_units}}</span></div>
+            </div>
+            <div>
+                <h3>Customer Growth</h3>
+                <div class="financial-row"><span>Year 1 Customers</span> <span>{{cust_yr1}}</span></div>
+                <div class="financial-row"><span>Year 2 Customers</span> <span>{{cust_yr2}}</span></div>
+                <div class="financial-row"><span>Year 3 Customers</span> <span>{{cust_yr3}}</span></div>
+                <br>
+                <div style="font-weight: bold; font-size: 12pt;">Total (3YR): {{tot_cust}}</div>
+            </div>
+        </div>
+
+        <div class="dark-box" style="margin-top: 20mm;">
+            <h3>Unique Value Proposition</h3>
+            <div style="font-size: 16pt; line-height: 1.5;">{{uvp}}</div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-left">Generated for {{client_name}}</div>
+            Page 4
+        </div>
+    </div>
+
+    <!-- PAGE 5: BUSINESS PLAN -->
+    <div class="page">
+        <div class="header-bar">
+            <div class="header-title">Lean Business Plan</div>
+            <div class="header-subtitle">Innovate Design | Product Potential Report</div>
+        </div>
+
+        <div style="margin-top: 30mm;"></div>
+
+        <div class="lean-grid">
+            <div class="lean-item">
+                <div class="lean-header">Problem</div>
+                <div>{{lbp_problems}}</div>
+            </div>
+            <div class="lean-item">
+                <div class="lean-header">Solution</div>
+                <div>{{lbp_sol}}</div>
+            </div>
+
+            <div class="lean-item">
+                <div class="lean-header">UVP</div>
+                <div>{{lbp_uvp}}</div>
+            </div>
+            <div class="lean-item">
+                <div class="lean-header">Channels</div>
+                <div>{{lbp_chan}}</div>
+            </div>
+
+            <div class="lean-item">
+                <div class="lean-header">Revenue Streams</div>
+                <div>{{lbp_rev_stream}}</div>
+            </div>
+            <div class="lean-item">
+                <div class="lean-header">Cost Structure</div>
+                <div>{{lbp_cost_struc}}</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-left">Generated for {{client_name}}</div>
+            Page 5
+        </div>
+    </div>
+
+</body>
+
+</html>

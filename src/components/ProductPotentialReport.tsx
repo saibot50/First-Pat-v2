@@ -13,7 +13,7 @@ import {
   generateFinancials,
   generateUVP
 } from '../services/geminiService';
-import { ArrowLeft, ArrowRight, Upload, Phone, Loader2, Sparkles, CheckCircle, Globe, BrainCircuit, RefreshCw, Code, ChevronDown, ChevronUp, AlertTriangle, Search, PenTool, Mail, PhoneCall, FileText, FileDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Upload, Phone, Loader2, Sparkles, CheckCircle, Globe, BrainCircuit, RefreshCw, Code, ChevronDown, ChevronUp, AlertTriangle, Search, PenTool, Mail, PhoneCall, FileText, FileDown, X } from 'lucide-react';
 
 interface Props {
   ideaData: IdeaData;
@@ -46,6 +46,8 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
   const [judgement, setJudgement] = useState<PatentJudgement | null>(null);
   const [showVariables, setShowVariables] = useState(false);
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
 
   const [hasAttemptedFinancials, setHasAttemptedFinancials] = useState(false);
 
@@ -328,6 +330,64 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
       "lbp_cust": truncateWords(d.leanCanvas.customers, 15),
       "lbp_ea": truncateWords(d.leanCanvas.earlyAdopters, 15)
     };
+  };
+
+
+
+  // --- SERVER SIDE GENERATION ---
+
+  const handlePreviewHtml = async () => {
+    setIsGeneratingFile(true);
+    try {
+      const data = getFlattenedData();
+      const response = await fetch('/api/report/html', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate preview");
+
+      const html = await response.text();
+      setPreviewHtml(html);
+      setShowPreview(true);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to generate preview");
+    } finally {
+      setIsGeneratingFile(false);
+    }
+  };
+
+  const handleDownloadServerPDF = async () => {
+    setIsGeneratingFile(true);
+    try {
+      const data = getFlattenedData();
+      const response = await fetch('/api/report/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data,
+          outputName: pprData.projectName || "Report"
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${pprData.projectName || 'Report'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to download PDF");
+    } finally {
+      setIsGeneratingFile(false);
+    }
   };
 
   // --- CLIENT SIDE PPTX GENERATION ---
@@ -799,14 +859,27 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
             </p>
 
             <div className="flex flex-col gap-3 py-4">
-              <Button
-                onClick={handleGenerateAndDownloadPDF}
-                size="lg"
-                className="w-full py-6 text-xl bg-blue-600 hover:bg-blue-700 shadow-lg text-white font-bold tracking-wide"
-                icon={<FileText size={24} />}
-              >
-                Download Professional Report (PDF)
-              </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  onClick={handlePreviewHtml}
+                  size="lg"
+                  variant="outline"
+                  className="w-full py-6 text-xl font-bold tracking-wide"
+                  icon={<Search size={24} />}
+                  isLoading={isGeneratingFile}
+                >
+                  Preview HTML
+                </Button>
+                <Button
+                  onClick={handleDownloadServerPDF}
+                  size="lg"
+                  className="w-full py-6 text-xl bg-blue-600 hover:bg-blue-700 shadow-lg text-white font-bold tracking-wide"
+                  icon={<FileText size={24} />}
+                  isLoading={isGeneratingFile}
+                >
+                  Download PDF
+                </Button>
+              </div>
             </div>
 
             <div className="bg-slate-50 p-4 rounded-lg text-xs text-slate-500">
@@ -911,6 +984,26 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
           </Button>
         )}
       </div>
+
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="font-bold text-lg">Report Preview</h3>
+              <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 bg-slate-100 p-4 overflow-auto">
+              <iframe
+                srcDoc={previewHtml}
+                className="w-full h-full bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm]"
+                title="Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,84 +5,47 @@ import { chromium } from "playwright";
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
-function escapeHtml(s) {
-    return String(s ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#39;");
-}
 
-function renderReportHtml({ title, content, generatedAt }) {
-    const safeTitle = escapeHtml(title || "Report");
-    const safeContent = escapeHtml(content || "");
-
-    return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${safeTitle}</title>
-  <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 40px; }
-    h1 { margin: 0 0 12px; font-size: 44px; }
-    .meta { color: #6b7280; font-size: 14px; margin-bottom: 18px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px; font-size: 18px; }
-
-    /* Print/PDF */
-    @page { size: A4; margin: 16mm; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <h1>${safeTitle}</h1>
-  <div class="meta">Generated ${escapeHtml(generatedAt)}</div>
-  <div class="card">${safeContent}</div>
-</body>
-</html>`;
-}
+import { renderTemplate } from "./services/templateRenderer.js";
 
 app.post("/report/html", async (req, res) => {
-    const title = req.body?.title || "Report";
-    const content = req.body?.content || "";
-    const html = renderReportHtml({ title, content, generatedAt: new Date().toISOString() });
-
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(html);
+    try {
+        const data = req.body.data || {};
+        const html = renderTemplate("first-patent", data);
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.status(200).send(html);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error generating report preview");
+    }
 });
 
 
 app.post("/report/pdf", async (req, res) => {
     let browser;
     try {
-        const title = req.body?.title || "First Patent Report";
-        const content = req.body?.content || "Hello from HTML → PDF 👋";
+        const data = req.body.data || {};
+        const outputName = req.body.outputName || "report";
+        const html = renderTemplate("first-patent", data);
 
         browser = await chromium.launch({
             args: ["--no-sandbox", "--disable-setuid-sandbox"],
         });
 
         const page = await browser.newPage();
-
-        const html = renderReportHtml({
-            title,
-            content,
-            generatedAt: new Date().toISOString(),
-        });
-
         await page.setContent(html, { waitUntil: "networkidle" });
 
         const pdf = await page.pdf({
             format: "A4",
             printBackground: true,
-            preferCSSPageSize: true,
+            preferCSSPageSize: true, // Respects our @page size
         });
 
         res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", `attachment; filename="report.pdf"`);
+        res.setHeader("Content-Disposition", `attachment; filename="${safeFilename(outputName)}.pdf"`);
         res.status(200).send(Buffer.from(pdf));
     } catch (err) {
+        console.error(err);
         res.status(500).json({ ok: false, error: String(err?.message || err) });
     } finally {
         if (browser) await browser.close().catch(() => { });
