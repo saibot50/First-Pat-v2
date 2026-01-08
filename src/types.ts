@@ -99,14 +99,20 @@ export interface ApplicantDetails {
   contactPhone: string;
 }
 
+export interface DisclaimerState {
+  risks: boolean;
+  noGuarantee: boolean;
+  fees: boolean;
+  ownership: boolean;
+}
+
 export interface PatentData {
+  internalStage?: string;
+  disclaimers: DisclaimerState;
   keyComponents: string;
   variations: string;
   draftDescription: string;
-  generatedImages: {
-    main: string;
-    alternative: string;
-    diagram: string;
-  };
+  images: (string | null)[];
+  uploadedImages: (string | null)[];
   filingDetails: ApplicantDetails;
 }

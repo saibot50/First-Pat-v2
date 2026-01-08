@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { auth } from '../services/firebase';
+import { getApplication, saveApplication } from '../services/firestoreService';
+import { Loader2, Save, LogOut } from 'lucide-react';
+import { Button } from './ui/Button';
+import { IdeaData, AppStage, PPRData, PatentData } from '../types';
 import { ConfidentialityAgreement } from './ConfidentialityAgreement';
 import { IdeaAnalyser } from './IdeaAnalyser';
 import { ProductPotentialReport } from './ProductPotentialReport';
 import { PatentDrafting } from './PatentDrafting';
 import { Header } from './Header';
-import { IdeaData, AppStage, PPRData } from '../types';
 
 const INITIAL_IDEA_DATA: IdeaData = {
     title: 'A dog collar with gps tracking and cooling',
@@ -42,7 +47,7 @@ const INITIAL_PPR_DATA: PPRData = {
     forecast: { year1: '100', year2: '200', year3: '400', total: '700' },
     leanCanvas: {
         problems: 'Pet owners struggle to prevent dogs from getting lost while simultaneously managing heatstroke risks.',
-        solutions: '', // Prompt didn't specify, keeping default
+        solutions: '',
         uvp: 'Keep your dog safe and cool with a self-charging GPS and integrated cooling collar.',
         concept: 'A kinetic-powered collar that combines active cooling with real-time GPS safety tracking.',
         customers: 'Safety-conscious pet owners in hot climates seeking integrated GPS tracking and active cooling.',
@@ -55,12 +60,89 @@ const INITIAL_PPR_DATA: PPRData = {
     }
 };
 
-export const Home: React.FC = () => {
+const INITIAL_PATENT_DATA: PatentData = {
+    disclaimers: { risks: false, noGuarantee: false, fees: false, ownership: false },
+    keyComponents: '',
+    variations: '',
+    draftDescription: '',
+    images: [null, null, null],
+    uploadedImages: [null, null, null],
+    filingDetails: {
+        reference: '',
+        name: '',
+        address: '',
+        inventionTitle: '',
+        areApplicantsInventors: true,
+        otherInventors: '',
+        signature: '',
+        date: new Date().toISOString().split('T')[0],
+        contactName: '',
+        contactEmail: '',
+        contactPhone: ''
+    }
+};
+
+export const ApplicationEditor: React.FC = () => {
+    const { appId } = useParams();
+    const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
     const [currentStage, setCurrentStage] = useState<AppStage>(AppStage.AGREEMENT);
     const [ideaData, setIdeaData] = useState<IdeaData>(INITIAL_IDEA_DATA);
     const [pprData, setPprData] = useState<PPRData>(INITIAL_PPR_DATA);
+    const [patentData, setPatentData] = useState<PatentData>(INITIAL_PATENT_DATA);
 
-    // Auto-populate PPR summary from Idea when moving stages
+    useEffect(() => {
+        const loadProject = async () => {
+            if (!appId || !auth.currentUser) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const data = await getApplication(auth.currentUser.uid, appId);
+                if (data) {
+                    if (data.stage) setCurrentStage(data.stage as AppStage);
+
+                    if (data.ideaData) setIdeaData({ ...INITIAL_IDEA_DATA, ...data.ideaData });
+                    if (data.pprData) setPprData({ ...INITIAL_PPR_DATA, ...data.pprData });
+                    if (data.patentData) setPatentData({ ...INITIAL_PATENT_DATA, ...data.patentData });
+
+                    setLastSaved(data.updatedAt);
+                } else {
+                    navigate('/');
+                }
+            } catch (error) {
+                console.error("Failed to load project", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadProject();
+    }, [appId, navigate]);
+
+    const handleSave = async () => {
+        if (!appId || !auth.currentUser) return;
+
+        setIsSaving(true);
+        try {
+            await saveApplication(auth.currentUser.uid, appId, {
+                stage: currentStage,
+                ideaData,
+                pprData,
+                patentData
+            });
+            setLastSaved(new Date());
+        } catch (error) {
+            console.error("Save failed", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const syncIdeaToPPR = (iData: IdeaData) => {
         setPprData(prev => ({
             ...prev,
@@ -74,6 +156,10 @@ export const Home: React.FC = () => {
 
     const handlePPRUpdate = (newData: PPRData) => {
         setPprData(newData);
+    };
+
+    const handlePatentUpdate = (newData: PatentData) => {
+        setPatentData(newData);
     };
 
     const handleAgreementSigned = () => {
@@ -95,15 +181,54 @@ export const Home: React.FC = () => {
 
     const handleProceedToPatent = () => {
         setCurrentStage(AppStage.PATENT_WIZARD);
+        // Pre-fill
+        if (!patentData.filingDetails.inventionTitle) {
+            setPatentData(prev => ({
+                ...prev,
+                filingDetails: { ...prev.filingDetails, inventionTitle: ideaData.title }
+            }));
+        }
     };
 
     const handlePatentBack = () => {
         setCurrentStage(AppStage.PPR_WIZARD);
     }
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="animate-spin text-blue-600" size={48} />
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
-            <Header />
+            <Header>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400 mr-2 hidden sm:inline-block">
+                        {lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Unsaved'}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        icon={isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                    >
+                        Save
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigate('/')}
+                        className="text-slate-500"
+                        title="Exit to Dashboard"
+                    >
+                        <LogOut size={16} />
+                    </Button>
+                </div>
+            </Header>
 
             <main className="flex-grow">
                 {currentStage === AppStage.AGREEMENT && (
@@ -132,6 +257,8 @@ export const Home: React.FC = () => {
                 {currentStage === AppStage.PATENT_WIZARD && (
                     <PatentDrafting
                         ideaData={ideaData}
+                        data={patentData}
+                        onUpdate={handlePatentUpdate}
                         onBack={handlePatentBack}
                     />
                 )}

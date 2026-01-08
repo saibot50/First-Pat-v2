@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Home } from './components/Home';
+import { Dashboard } from './components/Dashboard';
+import { ApplicationEditor } from './components/ApplicationEditor';
 import { Login } from './components/Login';
 import { FinishSignin } from './components/FinishSignin';
 import { AuthGuard } from './components/AuthGuard';
@@ -14,7 +15,12 @@ const App: React.FC = () => {
             <Routes>
                 <Route path="/" element={
                     <AuthGuard>
-                        <Home />
+                        <Dashboard />
+                    </AuthGuard>
+                } />
+                <Route path="/app/:appId" element={
+                    <AuthGuard>
+                        <ApplicationEditor />
                     </AuthGuard>
                 } />
                 <Route path="/login" element={<Login />} />
