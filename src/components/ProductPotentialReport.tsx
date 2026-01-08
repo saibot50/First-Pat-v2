@@ -47,7 +47,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
   const [showVariables, setShowVariables] = useState(false);
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [hasAttemptedFinancials, setHasAttemptedFinancials] = useState(false);
 
@@ -88,6 +88,15 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
       }
     }
   }, [pprData.financials.rrp, pprData.financials.addOnValue]);
+
+  // --- CLEANUP OBJECT URLS ---
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        window.URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const handleNext = async () => {
     if (currentStep < totalSteps - 1) {
@@ -348,8 +357,9 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
 
       if (!response.ok) throw new Error("Failed to generate preview");
 
-      const html = await response.text();
-      setPreviewHtml(html);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      setPreviewUrl(url);
       setShowPreview(true);
     } catch (e) {
       console.error(e);
@@ -996,7 +1006,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
             </div>
             <div className="flex-1 bg-slate-100 p-4 overflow-auto">
               <iframe
-                srcDoc={previewHtml}
+                src={previewUrl || ""}
                 className="w-full h-full bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm]"
                 title="Preview"
               />
