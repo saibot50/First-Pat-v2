@@ -935,6 +935,42 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
     );
   };
 
+  // --- PREVIEW MODAL ---
+  const renderPreviewModal = () => {
+    if (!showPreview) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="font-bold text-lg">Report Preview</h3>
+            <div className="flex gap-2">
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                >
+                  Open in New Tab
+                </a>
+              )}
+              <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 bg-slate-100 p-4 overflow-auto">
+            <iframe
+              src={previewUrl || ""}
+              className="w-full h-full bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm]"
+              title="Preview"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // --- MAIN RENDER ---
 
   if (isLoading) {
@@ -954,6 +990,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 bg-white rounded-xl shadow-lg border border-slate-200">
         {renderJudgement()}
+        {renderPreviewModal()}
       </div>
     )
   }
@@ -998,37 +1035,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
         )}
       </div>
 
-      {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex justify-between items-center p-4 border-b">
-              <h3 className="font-bold text-lg">Report Preview</h3>
-              <div className="flex gap-2">
-                {previewUrl && (
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-                  >
-                    Open in New Tab
-                  </a>
-                )}
-                <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 bg-slate-100 p-4 overflow-auto">
-              <iframe
-                src={previewUrl || ""}
-                className="w-full h-full bg-white shadow-lg mx-auto max-w-[210mm] min-h-[297mm]"
-                title="Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {renderPreviewModal()}
 
     </div>
   );
