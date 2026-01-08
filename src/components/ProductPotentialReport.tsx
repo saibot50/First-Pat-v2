@@ -358,11 +358,14 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
       if (!response.ok) throw new Error("Failed to generate preview");
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Force content type to text/html to ensure browser treats it correctly
+      const htmlBlob = new Blob([blob], { type: 'text/html' });
+      const url = window.URL.createObjectURL(htmlBlob);
+      console.log("Generated Preview URL:", url);
       setPreviewUrl(url);
       setShowPreview(true);
     } catch (e) {
-      console.error(e);
+      console.error("Preview generation error:", e);
       alert("Failed to generate preview");
     } finally {
       setIsGeneratingFile(false);
@@ -1000,9 +1003,21 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
           <div className="bg-white w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="font-bold text-lg">Report Preview</h3>
-              <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
-                <X size={24} />
-              </button>
+              <div className="flex gap-2">
+                {previewUrl && (
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                  >
+                    Open in New Tab
+                  </a>
+                )}
+                <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 bg-slate-100 p-4 overflow-auto">
               <iframe
