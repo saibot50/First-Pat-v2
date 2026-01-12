@@ -345,6 +345,15 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
 
   // --- SERVER SIDE GENERATION ---
 
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
   const handlePreviewHtml = async () => {
     setIsGeneratingFile(true);
     try {
@@ -358,6 +367,10 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
       if (!response.ok) throw new Error("Failed to generate preview");
 
       const blob = await response.blob();
+      // Save to Firestore
+      const base64 = await blobToBase64(blob);
+      onUpdate({ ...pprData, generatedHtml: base64 });
+
       // Force content type to text/html to ensure browser treats it correctly
       const htmlBlob = new Blob([blob], { type: 'text/html' });
       const url = window.URL.createObjectURL(htmlBlob);
@@ -388,6 +401,11 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
       if (!response.ok) throw new Error("Failed to generate PDF");
 
       const blob = await response.blob();
+
+      // Save to Firestore
+      const base64 = await blobToBase64(blob);
+      onUpdate({ ...pprData, generatedPdf: base64 });
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -996,47 +1014,72 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex justify-between text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-          <span>{stepName}</span>
-          <span>Step {currentStep + 1} of {totalSteps}</span>
-        </div>
-        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-600 transition-all duration-300"
-            style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }}
-          />
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Granular Sidebar Navigation */}
+        <aside className="lg:w-64 flex-shrink-0">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
+            <div className="p-4 bg-slate-50 border-b border-slate-200">
+              <h3 className="font-bold text-sm text-slate-700 uppercase tracking-wider">Report Sections</h3>
+            </div>
+            <nav className="p-2 space-y-1">
+              {STEPS.map((step, index) => {
+                const isActive = currentStep === index;
+                const isCompleted = index < currentStep; // Simple heuristic for "previously visited"
 
-      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8 min-h-[400px]">
-        {stepName === 'Project Info' && renderProjectInfo()}
-        {stepName === 'Customers' && renderCustomers()}
-        {stepName === 'Competitor 1' && renderCompetitor(0)}
-        {stepName === 'Competitor 2' && renderCompetitor(1)}
-        {stepName === 'Competitor 3' && renderCompetitor(2)}
-        {stepName === 'Problems & UVP' && renderProblemsUVP()}
-        {stepName === 'Market Data' && renderMarketData()}
-        {stepName === 'Financials' && renderFinancials()}
-        {stepName === 'Forecast' && renderForecast()}
-        {stepName === 'Lean Canvas' && renderLeanCanvas()}
-        {stepName === 'Final Analysis' && renderFinalAnalysis()}
-      </div>
+                return (
+                  <button
+                    key={step}
+                    onClick={() => setCurrentStep(index)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group ${isActive
+                        ? 'bg-blue-50 text-blue-700 font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                  >
+                    <span className="truncate">{step}</span>
+                    {isActive && <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </aside>
 
-      <div className="mt-6 flex justify-between">
-        <Button variant="ghost" onClick={handleBack} icon={<ArrowLeft size={20} />}>
-          Back
-        </Button>
-        {stepName !== 'Final Analysis' && stepName !== 'Competitor Research' && (
-          <Button onClick={handleNext} icon={<ArrowRight size={20} />}>
-            Next
-          </Button>
-        )}
+        {/* Main Content Area */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8 min-h-[500px]">
+            {stepName === 'Project Info' && renderProjectInfo()}
+            {stepName === 'Customers' && renderCustomers()}
+            {stepName === 'Competitor 1' && renderCompetitor(0)}
+            {stepName === 'Competitor 2' && renderCompetitor(1)}
+            {stepName === 'Competitor 3' && renderCompetitor(2)}
+            {stepName === 'Problems & UVP' && renderProblemsUVP()}
+            {stepName === 'Market Data' && renderMarketData()}
+            {stepName === 'Financials' && renderFinancials()}
+            {stepName === 'Forecast' && renderForecast()}
+            {stepName === 'Lean Canvas' && renderLeanCanvas()}
+            {stepName === 'Final Analysis' && renderFinalAnalysis()}
+          </div>
+
+          <div className="mt-8 flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <Button variant="ghost" onClick={handleBack} icon={<ArrowLeft size={20} />}>
+              Previous Section
+            </Button>
+
+            <div className="text-sm font-medium text-slate-400">
+              Step {currentStep + 1} of {totalSteps}
+            </div>
+
+            {stepName !== 'Final Analysis' && stepName !== 'Competitor Research' ? (
+              <Button onClick={handleNext} icon={<ArrowRight size={20} />}>
+                Next Section
+              </Button>
+            ) : <div className="w-24"></div>}
+          </div>
+        </div>
       </div>
 
       {renderPreviewModal()}
-
     </div>
   );
 };

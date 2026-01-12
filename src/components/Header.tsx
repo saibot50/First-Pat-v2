@@ -3,9 +3,10 @@ import { PenTool } from 'lucide-react';
 
 interface HeaderProps {
   children?: React.ReactNode;
+  title?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ children }) => {
+export const Header: React.FC<HeaderProps> = ({ children, title }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -13,7 +14,10 @@ export const Header: React.FC<HeaderProps> = ({ children }) => {
           <div className="bg-blue-600 p-2 rounded-lg text-white">
             <PenTool size={20} />
           </div>
-          <span className="font-bold text-xl text-slate-900 tracking-tight">Innovate Design</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-lg text-slate-900 leading-tight">Innovate Design</span>
+            {title && <span className="text-xs text-blue-600 font-medium truncate max-w-[150px] sm:max-w-[300px]">{title}</span>}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {children}

@@ -34,6 +34,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
     // UI State (Local)
     const [isLoading, setIsLoading] = useState(false);
     const [loadingText, setLoadingText] = useState('');
+    const [error, setError] = useState<string | null>(null);
     const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
@@ -70,10 +71,17 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
 
     const generateDraft = async () => {
         setIsLoading(true);
+        setError(null);
         setLoadingText("Drafting patent description (UK IPO Standard)...");
-        const result = await generatePatentDescription(ideaData, { components, variations });
-        updateData({ draftDescription: result });
-        setIsLoading(false);
+        try {
+            const result = await generatePatentDescription(ideaData, { components, variations });
+            updateData({ draftDescription: result, internalStage: 'DRAFTING' });
+        } catch (e: any) {
+            console.error(e);
+            setError(e.message || "Failed to generate draft. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,11 +145,12 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 }));
                 updateData({ images: updates });
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setError(e.message || "Failed to generate figures.");
+        } finally {
+            setIsLoading(false);
         }
-
-        setIsLoading(false);
     };
 
     const handleRerollImage = async (index: number) => {
@@ -230,6 +239,10 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                     }
                 });
             }
+
+            // Save to Firestore
+            const pdfBase64 = doc.output('datauristring');
+            updateData({ generatedPdf: pdfBase64 });
 
             doc.save("Patent_Application_Draft.pdf");
         }
@@ -326,8 +339,14 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 isAiLoading={isEnhancing === 'variations'}
             />
 
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                    {error}
+                </div>
+            )}
+
             <div className="flex justify-end pt-4">
-                <Button onClick={() => { generateDraft(); setStage('DRAFTING'); }} disabled={!components || !variations}>
+                <Button onClick={() => generateDraft()} disabled={!components || !variations}>
                     Generate Patent Draft
                 </Button>
             </div>
@@ -340,6 +359,15 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 <div className="flex flex-col items-center justify-center py-20">
                     <Loader2 className="animate-spin text-blue-600 mb-4" size={48} />
                     <p className="text-lg font-medium text-slate-700 animate-pulse">{loadingText}</p>
+                </div>
+            ) : error ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="text-red-500 mb-4 bg-red-50 p-4 rounded-full">
+                        <X size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">Generation Failed</h3>
+                    <p className="text-slate-600 mb-6">{error}</p>
+                    <Button onClick={() => { setError(null); generateDraft(); }}>Try Again</Button>
                 </div>
             ) : (
                 <>

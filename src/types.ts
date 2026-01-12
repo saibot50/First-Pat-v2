@@ -8,6 +8,7 @@ export interface IdeaData {
 
 export enum AppStage {
   AGREEMENT = 'AGREEMENT',
+  OVERVIEW = 'OVERVIEW',
   ANALYSER = 'ANALYSER',
   PPR_INTRO = 'PPR_INTRO',
   PPR_WIZARD = 'PPR_WIZARD',
@@ -78,6 +79,9 @@ export interface PPRData {
   financials: Financials;
   forecast: Forecast;
   leanCanvas: LeanCanvas;
+  // Generated content storage
+  generatedPdf?: string; // base64 or URL
+  generatedHtml?: string;
 }
 
 export interface PatentJudgement {
@@ -115,4 +119,6 @@ export interface PatentData {
   images: (string | null)[];
   uploadedImages: (string | null)[];
   filingDetails: ApplicantDetails;
+  // Generated content storage
+  generatedPdf?: string; // base64 or URL
 }

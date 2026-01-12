@@ -82,6 +82,11 @@ const INITIAL_PATENT_DATA: PatentData = {
     }
 };
 
+import { StageNavigator } from './StageNavigator';
+import { ProjectOverview } from './ProjectOverview';
+
+// ... (existing constants)
+
 export const ApplicationEditor: React.FC = () => {
     const { appId } = useParams();
     const navigate = useNavigate();
@@ -89,10 +94,12 @@ export const ApplicationEditor: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+    const [projectTitle, setProjectTitle] = useState('New Project');
     const [currentStage, setCurrentStage] = useState<AppStage>(AppStage.AGREEMENT);
     const [ideaData, setIdeaData] = useState<IdeaData>(INITIAL_IDEA_DATA);
     const [pprData, setPprData] = useState<PPRData>(INITIAL_PPR_DATA);
     const [patentData, setPatentData] = useState<PatentData>(INITIAL_PATENT_DATA);
+    const [completedStages, setCompletedStages] = useState<AppStage[]>([]);
 
     useEffect(() => {
         const loadProject = async () => {
@@ -104,13 +111,27 @@ export const ApplicationEditor: React.FC = () => {
             try {
                 const data = await getApplication(auth.currentUser.uid, appId);
                 if (data) {
-                    if (data.stage) setCurrentStage(data.stage as AppStage);
+                    if (data.title) setProjectTitle(data.title);
+
+                    // Default behavior: If it's not a brand new agreement stage, land on the OVERVIEW/File layer
+                    if (data.stage && data.stage !== AppStage.AGREEMENT) {
+                        setCurrentStage(AppStage.OVERVIEW);
+                    } else if (data.stage) {
+                        setCurrentStage(data.stage as AppStage);
+                    }
 
                     if (data.ideaData) setIdeaData({ ...INITIAL_IDEA_DATA, ...data.ideaData });
                     if (data.pprData) setPprData({ ...INITIAL_PPR_DATA, ...data.pprData });
                     if (data.patentData) setPatentData({ ...INITIAL_PATENT_DATA, ...data.patentData });
 
-                    setLastSaved(data.updatedAt);
+                    // Derive completed stages
+                    const stages = [AppStage.AGREEMENT, AppStage.ANALYSER, AppStage.PPR_WIZARD, AppStage.PATENT_WIZARD];
+                    const currentIndex = stages.indexOf(data.stage as AppStage);
+                    if (currentIndex !== -1) {
+                        setCompletedStages(stages.slice(0, currentIndex));
+                    }
+
+                    setLastSaved(data.updatedAt || new Date());
                 } else {
                     navigate('/');
                 }
@@ -124,13 +145,43 @@ export const ApplicationEditor: React.FC = () => {
         loadProject();
     }, [appId, navigate]);
 
-    const handleSave = async () => {
-        if (!appId || !auth.currentUser) return;
+    // Autosave on data change
+    useEffect(() => {
+        if (!isLoading && currentStage !== AppStage.OVERVIEW) {
+            const timer = setTimeout(() => {
+                handleSave();
+            }, 5000); // 5s debounce for typing
+            return () => clearTimeout(timer);
+        }
+    }, [ideaData, pprData, patentData]);
+
+    // Immediate save on stage change
+    useEffect(() => {
+        if (!isLoading && currentStage !== AppStage.OVERVIEW) {
+            handleSave();
+            // Update completed stages
+            const stages = [AppStage.AGREEMENT, AppStage.ANALYSER, AppStage.PPR_WIZARD, AppStage.PATENT_WIZARD];
+            const currentIndex = stages.indexOf(currentStage);
+            if (currentIndex !== -1) {
+                setCompletedStages(prev => {
+                    const next = [...prev];
+                    stages.slice(0, currentIndex).forEach(s => {
+                        if (!next.includes(s)) next.push(s);
+                    });
+                    return next;
+                });
+            }
+        }
+    }, [currentStage]);
+
+    const handleSave = async (forceStage?: AppStage) => {
+        if (!appId || !auth.currentUser || isLoading) return;
 
         setIsSaving(true);
         try {
             await saveApplication(auth.currentUser.uid, appId, {
-                stage: currentStage,
+                title: projectTitle, // Matches Dashboard/Creation name
+                stage: forceStage || currentStage,
                 ideaData,
                 pprData,
                 patentData
@@ -204,7 +255,7 @@ export const ApplicationEditor: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
-            <Header>
+            <Header title={projectTitle}>
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 mr-2 hidden sm:inline-block">
                         {lastSaved ? `Saved ${lastSaved.toLocaleTimeString()}` : 'Unsaved'}
@@ -212,7 +263,7 @@ export const ApplicationEditor: React.FC = () => {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         disabled={isSaving}
                         icon={isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                     >
@@ -230,7 +281,32 @@ export const ApplicationEditor: React.FC = () => {
                 </div>
             </Header>
 
+            {currentStage !== AppStage.OVERVIEW && (
+                <StageNavigator
+                    currentStage={currentStage}
+                    onNavigate={setCurrentStage}
+                    completedStages={completedStages}
+                />
+            )}
+
             <main className="flex-grow">
+                {currentStage === AppStage.OVERVIEW && (
+                    <ProjectOverview
+                        title={projectTitle}
+                        stage={currentStage}
+                        pprData={pprData}
+                        patentData={patentData}
+                        onContinue={async () => {
+                            // Find the logical next stage based on pprData/patentData presence
+                            // For now, load from getApplication data was originally saved stage
+                            const data = await getApplication(auth.currentUser!.uid, appId!);
+                            if (data?.stage) setCurrentStage(data.stage as AppStage);
+                            else setCurrentStage(AppStage.ANALYSER);
+                        }}
+                        onNavigateToStage={setCurrentStage}
+                    />
+                )}
+
                 {currentStage === AppStage.AGREEMENT && (
                     <ConfidentialityAgreement onAgree={handleAgreementSigned} />
                 )}

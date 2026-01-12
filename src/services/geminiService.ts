@@ -21,15 +21,30 @@ const cleanJson = (text: string): string => {
   return text.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
 };
 
-// Helper to strip markdown formatting for plain text requirements
+// Helper to strip markdown formatting but PRESERVE content
 const stripMarkdown = (text: string): string => {
   if (!text) return "";
-  let clean = text.replace(/\*\*(.*?)\*\*/g, '$1'); // Bold
-  clean = clean.replace(/\*(.*?)\*/g, '$1'); // Italic
-  clean = clean.replace(/#{1,6}\s?/g, ''); // Headers
-  clean = clean.replace(/`{3}[\s\S]*?`{3}/g, ''); // Code blocks
+  let clean = text;
+
+  // Remove bold/italic markers but keep text
+  clean = clean.replace(/\*\*(.*?)\*\*/g, '$1');
+  clean = clean.replace(/\*(.*?)\*/g, '$1');
+
+  // Remove headers markers but keep text
+  clean = clean.replace(/#{1,6}\s?/g, '');
+
+  // Unwrap code blocks (remove backticks but KEEP content)
+  // This replaces ```language ... ``` with just ...
+  clean = clean.replace(/```[\w]*\n?([\s\S]*?)```/g, '$1');
+
+  // Remove inline code backticks
+  clean = clean.replace(/`([^`]+)`/g, '$1');
+
   return clean;
 };
+
+// ... (existing code)
+
 
 export const enhanceFieldContent = async (
   currentFieldKey: FieldName | string,
@@ -400,6 +415,7 @@ export const generatePatentDescription = async (
   ideaData: IdeaData,
   extraDetails: { components: string, variations: string }
 ): Promise<string> => {
+  console.log("Generating patent draft for:", ideaData.title);
   try {
     const ai = getAi();
     const prompt = `
@@ -427,15 +443,36 @@ export const generatePatentDescription = async (
       contents: prompt
     });
 
-    // Strip any markdown that the model might have still included despite instructions
-    return stripMarkdown(response.text?.trim() || "");
-  } catch (e) {
-    console.error("Patent draft failed", e);
-    return "Error generating patent draft. Please try again.";
+    console.log("Patent draft generation response status:", response);
+
+    // Safety check for the text getter
+    const rawText = response.text;
+    console.log("Raw Response Text:", rawText);
+
+    if (!rawText) {
+      throw new Error("Received empty response from AI model (response.text is undefined/empty).");
+    }
+
+    // Strip any markdown
+    const text = stripMarkdown(rawText.trim());
+    console.log("Processed Text (after stripMarkdown):", text);
+
+    if (!text) {
+      throw new Error("Text became empty after stripping markdown.");
+    }
+    return text;
+  } catch (e: any) {
+    console.error("Patent draft generation failed:", e);
+    // Log extended error info if available
+    if (e.response) {
+      console.error("Error Response:", e.response);
+    }
+    throw e; // Rethrow so the UI knows it failed
   }
 };
 
 export const generateSinglePatentFigure = async (description: string, type: 'main' | 'alt' | 'diagram'): Promise<string> => {
+  console.log(`Generating figure (${type})...`);
   try {
     const ai = getAi();
     let promptBase = "";
@@ -473,6 +510,8 @@ export const generateSinglePatentFigure = async (description: string, type: 'mai
       }
     });
 
+    console.log(`Figure (${type}) generation response:`, response);
+
     if (response.candidates?.[0]?.content?.parts) {
       for (const part of response.candidates[0].content.parts) {
         if (part.inlineData) {
@@ -480,10 +519,13 @@ export const generateSinglePatentFigure = async (description: string, type: 'mai
         }
       }
     }
-    return "";
-  } catch (e) {
+    throw new Error("No image data received from model.");
+  } catch (e: any) {
     console.error("Single image gen failed", e);
-    return "";
+    if (e.response) {
+      console.error("Error Response:", e.response);
+    }
+    throw e;
   }
 }
 
