@@ -103,21 +103,43 @@ export const getApplication = async (userId: string, appId: string): Promise<App
     return null;
 };
 
+const sanitizeData = (data: any): any => {
+    if (data === null || data === undefined) return null;
+    if (data instanceof Timestamp || data instanceof Date) return data;
+    if (typeof data !== 'object') return data;
+    if (data instanceof File || data instanceof Blob) return null; // Cannot store Files in Firestore
+
+    if (Array.isArray(data)) {
+        return data.map(sanitizeData);
+    }
+
+    const sanitized: any = {};
+    Object.keys(data).forEach(key => {
+        const val = data[key];
+        if (val !== undefined) {
+            sanitized[key] = sanitizeData(val);
+        }
+    });
+    return sanitized;
+};
+
 export const saveApplication = async (userId: string, appId: string, data: Partial<ApplicationData>) => {
     const appRef = doc(db, 'users', userId, 'applications', appId);
 
-    // Prepare updates
-    const updates: any = {
-        ...data,
-        updatedAt: serverTimestamp()
-    };
+    try {
+        const updates = sanitizeData({
+            ...data,
+            updatedAt: serverTimestamp()
+        });
 
-    // Remove undefined values which Firestore doesn't like
-    Object.keys(updates).forEach(key => {
-        if (updates[key] === undefined) {
-            delete updates[key];
+        await updateDoc(appRef, updates);
+        console.log(`[Firestore] Application ${appId} saved successfully`);
+    } catch (error: any) {
+        console.error(`[Firestore] Error saving application ${appId}:`, error);
+        // Special handling for large document error
+        if (error.code === 'unavailable' || error.message?.includes('too large')) {
+            console.warn("[Firestore] Document might be too large (>1MB). Large base64 strings detected.");
         }
-    });
-
-    await updateDoc(appRef, updates);
+        throw error;
+    }
 };

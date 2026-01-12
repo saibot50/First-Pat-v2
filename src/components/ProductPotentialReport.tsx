@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
+import { auth } from '../services/firebase';
+import { uploadAsset } from '../services/storageService';
 import { IdeaData, PPRData, CompetitorData, PatentJudgement, AppStage } from '../types';
 import { Input } from './ui/Input';
 import { TextArea } from './ui/TextArea';
@@ -49,6 +52,7 @@ export const ProductPotentialReport: React.FC<Props> = ({
   hasPatentDraft,
   onNavigateToStage
 }) => {
+  const { appId } = useParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<string>('');
@@ -383,14 +387,23 @@ export const ProductPotentialReport: React.FC<Props> = ({
       if (!response.ok) throw new Error("Failed to generate preview");
 
       const blob = await response.blob();
-      // Save to Firestore
       const base64 = await blobToBase64(blob);
-      onUpdate({ ...pprData, generatedHtml: base64 });
+
+      let finalValue = base64;
+      if (appId && auth.currentUser) {
+        try {
+          const url = await uploadAsset(auth.currentUser.uid, appId, 'report-preview.html', base64);
+          finalValue = url;
+        } catch (storageErr) {
+          console.error("Storage upload failed for HTML", storageErr);
+        }
+      }
+
+      onUpdate({ ...pprData, generatedHtml: finalValue });
 
       // Force content type to text/html to ensure browser treats it correctly
       const htmlBlob = new Blob([blob], { type: 'text/html' });
       const url = window.URL.createObjectURL(htmlBlob);
-      console.log("Generated Preview URL:", url);
       setPreviewUrl(url);
       setShowPreview(true);
     } catch (e) {
@@ -417,10 +430,19 @@ export const ProductPotentialReport: React.FC<Props> = ({
       if (!response.ok) throw new Error("Failed to generate PDF");
 
       const blob = await response.blob();
-
-      // Save to Firestore
       const base64 = await blobToBase64(blob);
-      onUpdate({ ...pprData, generatedPdf: base64 });
+
+      let finalValue = base64;
+      if (appId && auth.currentUser) {
+        try {
+          const url = await uploadAsset(auth.currentUser.uid, appId, 'report.pdf', base64);
+          finalValue = url;
+        } catch (storageErr) {
+          console.error("Storage upload failed for PDF", storageErr);
+        }
+      }
+
+      onUpdate({ ...pprData, generatedPdf: finalValue });
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

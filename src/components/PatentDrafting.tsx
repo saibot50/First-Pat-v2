@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
+import { auth } from '../services/firebase';
+import { uploadAsset } from '../services/storageService';
 import { IdeaData, PatentData, ApplicantDetails, DisclaimerState } from '../types';
 import { Button } from './ui/Button';
 import { TextArea } from './ui/TextArea';
@@ -31,6 +34,7 @@ const INITIAL_DETAILS: ApplicantDetails = {
 };
 
 export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack }) => {
+    const { appId } = useParams();
     // UI State (Local)
     const [isLoading, setIsLoading] = useState(false);
     const [loadingText, setLoadingText] = useState('');
@@ -84,20 +88,35 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         }
     };
 
-    const handleImageUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setIsLoading(true);
+            setLoadingText("Uploading drawing...");
             const reader = new FileReader();
-            reader.onloadend = () => {
-                const result = reader.result as string;
+            reader.onloadend = async () => {
+                try {
+                    const result = reader.result as string;
+                    let finalValue = result;
 
-                const newUploads = [...uploadedImages];
-                newUploads[index] = result;
+                    if (appId && auth.currentUser) {
+                        const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${index + 1}.png`, result);
+                        finalValue = url;
+                    }
 
-                const newImages = [...images];
-                newImages[index] = result;
+                    const newUploads = [...uploadedImages];
+                    newUploads[index] = finalValue;
 
-                updateData({ images: newImages, uploadedImages: newUploads });
+                    const newImages = [...images];
+                    newImages[index] = finalValue;
+
+                    updateData({ images: newImages, uploadedImages: newUploads });
+                } catch (err) {
+                    console.error("Upload failed", err);
+                    alert("Failed to upload image to permanent storage.");
+                } finally {
+                    setIsLoading(false);
+                }
             };
             reader.readAsDataURL(file);
         }
@@ -132,19 +151,24 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         }
 
         try {
-            if (images.every(img => img === null) && uploadedImages.every(img => img === null)) {
-                const imgs = await generatePatentFigures(draft);
-                updateData({ images: imgs });
-            } else {
-                const types: ('main' | 'alt' | 'diagram')[] = ['main', 'alt', 'diagram'];
-                const updates = [...currentImages];
+            const types: ('main' | 'alt' | 'diagram')[] = ['main', 'alt', 'diagram'];
+            const updates = [...currentImages];
 
-                await Promise.all(indicesToGenerate.map(async (idx) => {
-                    const img = await generateSinglePatentFigure(draft, types[idx]);
-                    updates[idx] = img;
-                }));
-                updateData({ images: updates });
-            }
+            await Promise.all(indicesToGenerate.map(async (idx) => {
+                const imgBase64 = await generateSinglePatentFigure(draft, types[idx]);
+                let finalImg = imgBase64;
+
+                if (appId && auth.currentUser) {
+                    try {
+                        const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${idx + 1}.png`, imgBase64);
+                        finalImg = url;
+                    } catch (storageErr) {
+                        console.error("Storage upload failed for figure", storageErr);
+                    }
+                }
+                updates[idx] = finalImg;
+            }));
+            updateData({ images: updates });
         } catch (e: any) {
             console.error(e);
             setError(e.message || "Failed to generate figures.");
@@ -157,17 +181,31 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         if (uploadedImages[index]) return;
 
         setRegeneratingIndex(index);
-        const types: ('main' | 'alt' | 'diagram')[] = ['main', 'alt', 'diagram'];
-        const newImg = await generateSinglePatentFigure(draft, types[index]);
+        try {
+            const types: ('main' | 'alt' | 'diagram')[] = ['main', 'alt', 'diagram'];
+            const imgBase64 = await generateSinglePatentFigure(draft, types[index]);
+            let finalImg = imgBase64;
 
-        const update = [...images];
-        update[index] = newImg;
-        updateData({ images: update });
+            if (appId && auth.currentUser) {
+                try {
+                    const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${index + 1}.png`, imgBase64);
+                    finalImg = url;
+                } catch (storageErr) {
+                    console.error("Storage upload failed for reroll", storageErr);
+                }
+            }
 
-        setRegeneratingIndex(null);
+            const update = [...images];
+            update[index] = finalImg;
+            updateData({ images: update });
+        } catch (err) {
+            console.error("Reroll failed", err);
+        } finally {
+            setRegeneratingIndex(null);
+        }
     };
 
-    const syncPdfToFirestore = () => {
+    const syncPdfToFirestore = async () => {
         const doc = new jsPDF();
         const margin = 20;
         const pageHeight = doc.internal.pageSize.height;
@@ -204,7 +242,13 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
 
             const labels = ["Fig 1. Main Invention", "Fig 2. Alternative Embodiment", "Fig 3. System Block Diagram"];
 
-            images.forEach((img, i) => {
+            // For image rendering in PDF, we need the base64. 
+            // If it's a Storage URL, we might need a workaround, but for now jspdf might struggle with URLs.
+            // Actually, we usually have the base64 in the generator anyway.
+            // Let's assume the 'img' here might be a URL.
+
+            for (let i = 0; i < images.length; i++) {
+                const img = images[i];
                 if (img) {
                     const imgHeight = 80;
                     const spacing = 20;
@@ -216,21 +260,46 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
 
                     doc.setFontSize(10);
                     doc.text(labels[i], margin, y - 5);
+
                     try {
-                        doc.addImage(img, 'PNG', margin, y, 80, imgHeight);
-                    } catch (e) { console.error("PDF Image Error", e) }
+                        let finalImg = img;
+                        // If it's a Storage URL, we might need to fetch it as a Data URL for jsPDF
+                        if (img.startsWith('http')) {
+                            const response = await fetch(img);
+                            const blob = await response.blob();
+                            finalImg = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result as string);
+                                reader.readAsDataURL(blob);
+                            });
+                        }
+                        doc.addImage(finalImg, 'PNG', margin, y, 80, imgHeight);
+                    } catch (e) {
+                        console.error("PDF Image Error", e);
+                    }
 
                     y += imgHeight + spacing;
                 }
-            });
+            }
         }
 
         const pdfBase64 = doc.output('datauristring');
-        updateData({ generatedPdf: pdfBase64 });
+        let finalPdfValue = pdfBase64;
+
+        if (appId && auth.currentUser) {
+            try {
+                const url = await uploadAsset(auth.currentUser.uid, appId, 'patent-draft.pdf', pdfBase64);
+                finalPdfValue = url;
+            } catch (storageErr) {
+                console.error("Storage upload failed for patent PDF", storageErr);
+            }
+        }
+
+        updateData({ generatedPdf: finalPdfValue });
         return doc;
     };
 
-    const downloadPDF = (type: 'receipt' | 'application') => {
+    const downloadPDF = async (type: 'receipt' | 'application') => {
         if (type === 'receipt') {
             const doc = new jsPDF();
             const margin = 20;
@@ -249,7 +318,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             doc.text("Thank you for your submission. Our experts will review your filing shortly.", margin, y);
             doc.save("Filing_Receipt.pdf");
         } else {
-            const doc = syncPdfToFirestore();
+            const doc = await syncPdfToFirestore();
             doc.save("Patent_Application_Draft.pdf");
         }
     };
@@ -386,7 +455,12 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                             <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={syncPdfToFirestore}
+                                onClick={async () => {
+                                    setIsLoading(true);
+                                    setLoadingText("Syncing draft with overview...");
+                                    await syncPdfToFirestore();
+                                    setIsLoading(false);
+                                }}
                                 icon={<RefreshCw size={14} />}
                                 title="Sync this draft to the Project Overview PDF"
                             >

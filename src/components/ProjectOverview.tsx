@@ -27,10 +27,13 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     const hasPatentPdf = !!patentData.generatedPdf;
     const hasFigures = patentData.images.some(img => img !== null) || patentData.uploadedImages.some(img => img !== null);
 
-    const downloadBase64 = (base64: string, filename: string) => {
+    const handleDownload = (uri: string, filename: string) => {
         const link = document.createElement('a');
-        link.href = base64;
+        link.href = uri;
         link.download = filename;
+        if (uri.startsWith('http')) {
+            link.target = '_blank';
+        }
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -73,7 +76,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                             </div>
                             {hasAgreementPdf && (
-                                <Button variant="outline" size="sm" className="w-full" onClick={() => downloadBase64(pprData.agreementPdf!, `Confidentiality_Agreement_${title}.pdf`)}>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(pprData.agreementPdf!, `Confidentiality_Agreement_${title}.pdf`)}>
                                     <Download size={14} className="mr-2" /> Download
                                 </Button>
                             )}
@@ -90,7 +93,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                             </div>
                             {hasPPRPdf && (
-                                <Button variant="outline" size="sm" className="w-full" onClick={() => downloadBase64(pprData.generatedPdf!, `${title}_PPR.pdf`)}>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(pprData.generatedPdf!, `${title}_PPR.pdf`)}>
                                     <Download size={14} className="mr-2" /> Download
                                 </Button>
                             )}
@@ -126,7 +129,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                             </div>
                             {hasPatentPdf && (
-                                <Button variant="outline" size="sm" className="w-full" onClick={() => downloadBase64(patentData.generatedPdf!, `${title}_Patent_Draft.pdf`)}>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(patentData.generatedPdf!, `${title}_Patent_Draft.pdf`)}>
                                     <Download size={14} className="mr-2" /> Download
                                 </Button>
                             )}
@@ -169,7 +172,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                             <div className="p-3 border-t border-slate-100 flex items-center justify-between">
                                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{labels[i]}</span>
                                                 <button
-                                                    onClick={() => downloadBase64(img, `${title}_Fig_${i + 1}.png`)}
+                                                    onClick={() => handleDownload(img, `${title}_Fig_${i + 1}.png`)}
                                                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                                     title="Download Figure"
                                                 >

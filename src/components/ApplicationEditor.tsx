@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { getApplication, saveApplication } from '../services/firestoreService';
+import { uploadAsset } from '../services/storageService';
 import { Loader2, Save, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
 import { IdeaData, AppStage, PPRData, PatentData } from '../types';
@@ -216,9 +217,24 @@ export const ApplicationEditor: React.FC = () => {
         setPatentData(newData);
     };
 
-    const handleAgreementSigned = (pdfBase64: string) => {
-        setPprData(prev => ({ ...prev, agreementPdf: pdfBase64 }));
-        setCurrentStage(AppStage.ANALYSER);
+    const handleAgreementSigned = async (pdfBase64: string) => {
+        setIsSaving(true);
+        try {
+            let finalValue = pdfBase64;
+            if (appId && auth.currentUser) {
+                const url = await uploadAsset(auth.currentUser.uid, appId, 'confidentiality-agreement.pdf', pdfBase64);
+                finalValue = url;
+            }
+            setPprData(prev => ({ ...prev, agreementPdf: finalValue }));
+            setCurrentStage(AppStage.ANALYSER);
+        } catch (error) {
+            console.error("Failed to upload agreement", error);
+            // Fallback to base64 if upload fails? Or just proceed.
+            setPprData(prev => ({ ...prev, agreementPdf: pdfBase64 }));
+            setCurrentStage(AppStage.ANALYSER);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleAnalyserNext = () => {
