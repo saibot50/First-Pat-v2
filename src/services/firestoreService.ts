@@ -106,11 +106,18 @@ export const getApplication = async (userId: string, appId: string): Promise<App
 export const saveApplication = async (userId: string, appId: string, data: Partial<ApplicationData>) => {
     const appRef = doc(db, 'users', userId, 'applications', appId);
 
-    // Remove undefined values to prevent Firestore errors
-    const updates = JSON.parse(JSON.stringify({
+    // Prepare updates
+    const updates: any = {
         ...data,
         updatedAt: serverTimestamp()
-    }));
+    };
+
+    // Remove undefined values which Firestore doesn't like
+    Object.keys(updates).forEach(key => {
+        if (updates[key] === undefined) {
+            delete updates[key];
+        }
+    });
 
     await updateDoc(appRef, updates);
 };

@@ -103,8 +103,13 @@ export const ApplicationEditor: React.FC = () => {
 
     useEffect(() => {
         const loadProject = async () => {
-            if (!appId || !auth.currentUser) {
+            if (!appId) {
                 setIsLoading(false);
+                return;
+            }
+
+            if (!auth.currentUser) {
+                // Wait for auth to initialize (AuthGuard will handle direct redirects)
                 return;
             }
 
@@ -113,10 +118,8 @@ export const ApplicationEditor: React.FC = () => {
                 if (data) {
                     if (data.title) setProjectTitle(data.title);
 
-                    // Default behavior: If it's not a brand new agreement stage, land on the OVERVIEW/File layer
-                    if (data.stage && data.stage !== AppStage.AGREEMENT) {
-                        setCurrentStage(AppStage.OVERVIEW);
-                    } else if (data.stage) {
+                    // Restore the saved stage
+                    if (data.stage) {
                         setCurrentStage(data.stage as AppStage);
                     }
 
@@ -143,7 +146,7 @@ export const ApplicationEditor: React.FC = () => {
         };
 
         loadProject();
-    }, [appId, navigate]);
+    }, [appId, navigate, auth.currentUser]);
 
     // Autosave on data change
     useEffect(() => {
