@@ -14,6 +14,7 @@ export const Dashboard: React.FC = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectTitle, setNewProjectTitle] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -43,11 +44,13 @@ export const Dashboard: React.FC = () => {
     const handleCreate = async () => {
         if (!newProjectTitle.trim() || !auth.currentUser) return;
         setIsCreating(true);
+        setError(null);
         try {
             const id = await createApplication(auth.currentUser.uid, newProjectTitle);
             navigate(`/app/${id}`);
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            setError(e.message || 'An unexpected error occurred. Please try again.');
             setIsCreating(false);
         }
     };
@@ -102,8 +105,14 @@ export const Dashboard: React.FC = () => {
                             placeholder="e.g. Smart Dog Collar"
                             autoFocus
                         />
+                        {error && (
+                            <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+                                {error}
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-3 mt-6">
-                            <Button variant="ghost" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+                            <Button variant="ghost" onClick={() => { setShowCreateModal(false); setError(null); }}>Cancel</Button>
                             <Button onClick={handleCreate} disabled={!newProjectTitle.trim() || isCreating}>
                                 {isCreating ? 'Creating...' : 'Create & Start'}
                             </Button>

@@ -32,6 +32,7 @@ const getUsersCollection = () => collection(db, 'users');
 const getUserAppsCollection = (userId: string) => collection(db, 'users', userId, 'applications');
 
 export const createApplication = async (userId: string, title: string): Promise<string> => {
+    console.log(`[Firestore] Attempting to create application: "${title}" for user: ${userId}`);
     const appsRef = getUserAppsCollection(userId);
     const newAppRef = doc(appsRef); // Generate ID
 
@@ -47,8 +48,26 @@ export const createApplication = async (userId: string, title: string): Promise<
         patentData: {}
     };
 
-    await setDoc(newAppRef, appData);
-    return newAppRef.id;
+    try {
+        // Add a 10s timeout to avoid hanging indefinitely if Firestore is not configured or offline
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Firestore operation timed out. Please check your internet connection and Firebase configuration (Database setup, Rules, and Auth).')), 10000)
+        );
+
+        await Promise.race([
+            setDoc(newAppRef, appData),
+            timeoutPromise
+        ]);
+
+        console.log(`[Firestore] Application created successfully with ID: ${newAppRef.id}`);
+        return newAppRef.id;
+    } catch (error: any) {
+        console.error('[Firestore] Error creating application:', error);
+        if (error.code === 'permission-denied') {
+            throw new Error('Permission denied. Please ensure Firestore Security Rules are correctly configured in the Firebase Console.');
+        }
+        throw error;
+    }
 };
 
 export const getUserApplications = async (userId: string): Promise<ApplicationSummary[]> => {
