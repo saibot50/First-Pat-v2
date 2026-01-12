@@ -43,7 +43,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<string>('');
   const [aiSuggestionLoading, setAiSuggestionLoading] = useState<string | null>(null);
-  const [judgement, setJudgement] = useState<PatentJudgement | null>(null);
+  const [judgement, setJudgement] = useState<PatentJudgement | null>(pprData.judgement || null);
   const [showVariables, setShowVariables] = useState(false);
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -230,9 +230,15 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
   const handleFinalAnalysis = async () => {
     setIsLoading(true);
     setLoadingStage("Consulting UK IPO guidelines...");
-    const result = await generatePatentJudgement(ideaData, pprData);
-    setJudgement(result);
-    setIsLoading(false);
+    try {
+      const result = await generatePatentJudgement(ideaData, pprData);
+      setJudgement(result);
+      onUpdate({ ...pprData, judgement: result });
+    } catch (error) {
+      console.error("Final analysis failed", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAiSuggest = async (context: string, fieldKey: string, updateFn: (val: string) => void, siblings: string[] = [], maxWords: number = 20) => {
@@ -1032,8 +1038,8 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
                     key={step}
                     onClick={() => setCurrentStep(index)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group ${isActive
-                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 text-blue-700 font-semibold'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                       }`}
                   >
                     <span className="truncate">{step}</span>

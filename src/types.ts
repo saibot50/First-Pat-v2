@@ -82,6 +82,7 @@ export interface PPRData {
   // Generated content storage
   generatedPdf?: string; // base64 or URL
   generatedHtml?: string;
+  judgement?: PatentJudgement | null;
 }
 
 export interface PatentJudgement {

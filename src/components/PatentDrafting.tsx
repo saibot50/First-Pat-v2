@@ -167,14 +167,74 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         setRegeneratingIndex(null);
     };
 
-    const downloadPDF = (type: 'receipt' | 'application') => {
+    const syncPdfToFirestore = () => {
         const doc = new jsPDF();
         const margin = 20;
         const pageHeight = doc.internal.pageSize.height;
         const marginBottom = 30;
         let y = 30;
 
+        doc.setFontSize(11);
+        doc.text(`Title: ${details.inventionTitle}`, margin, y);
+        y += 15;
+
+        doc.setFontSize(14);
+        doc.text("Description", margin, y);
+        y += 10;
+        doc.setFontSize(10);
+
+        const splitText = doc.splitTextToSize(draft, 170);
+        const lineHeight = 5;
+
+        splitText.forEach((line: string) => {
+            if (y > pageHeight - marginBottom) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(line, margin, y);
+            y += lineHeight;
+        });
+
+        if (images.length > 0 && images.some(img => img !== null)) {
+            doc.addPage();
+            y = 20;
+            doc.setFontSize(14);
+            doc.text("Drawings", margin, y);
+            y += 20;
+
+            const labels = ["Fig 1. Main Invention", "Fig 2. Alternative Embodiment", "Fig 3. System Block Diagram"];
+
+            images.forEach((img, i) => {
+                if (img) {
+                    const imgHeight = 80;
+                    const spacing = 20;
+
+                    if (y + imgHeight + 10 > pageHeight - marginBottom) {
+                        doc.addPage();
+                        y = 20;
+                    }
+
+                    doc.setFontSize(10);
+                    doc.text(labels[i], margin, y - 5);
+                    try {
+                        doc.addImage(img, 'PNG', margin, y, 80, imgHeight);
+                    } catch (e) { console.error("PDF Image Error", e) }
+
+                    y += imgHeight + spacing;
+                }
+            });
+        }
+
+        const pdfBase64 = doc.output('datauristring');
+        updateData({ generatedPdf: pdfBase64 });
+        return doc;
+    };
+
+    const downloadPDF = (type: 'receipt' | 'application') => {
         if (type === 'receipt') {
+            const doc = new jsPDF();
+            const margin = 20;
+            let y = 30;
             doc.setFontSize(18);
             doc.text("Filing Receipt", margin, y);
             y += 15;
@@ -189,61 +249,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             doc.text("Thank you for your submission. Our experts will review your filing shortly.", margin, y);
             doc.save("Filing_Receipt.pdf");
         } else {
-            doc.setFontSize(11);
-            doc.text(`Title: ${details.inventionTitle}`, margin, y);
-            y += 15;
-
-            doc.setFontSize(14);
-            doc.text("Description", margin, y);
-            y += 10;
-            doc.setFontSize(10);
-
-            const splitText = doc.splitTextToSize(draft, 170);
-            const lineHeight = 5;
-
-            splitText.forEach((line: string) => {
-                if (y > pageHeight - marginBottom) {
-                    doc.addPage();
-                    y = 20;
-                }
-                doc.text(line, margin, y);
-                y += lineHeight;
-            });
-
-            if (images.length > 0) {
-                doc.addPage();
-                y = 20;
-                doc.setFontSize(14);
-                doc.text("Drawings", margin, y);
-                y += 20;
-
-                const labels = ["Fig 1. Main Invention", "Fig 2. Alternative Embodiment", "Fig 3. System Block Diagram"];
-
-                images.forEach((img, i) => {
-                    if (img) {
-                        const imgHeight = 80;
-                        const spacing = 20;
-
-                        if (y + imgHeight + 10 > pageHeight - marginBottom) {
-                            doc.addPage();
-                            y = 20;
-                        }
-
-                        doc.setFontSize(10);
-                        doc.text(labels[i], margin, y - 5);
-                        try {
-                            doc.addImage(img, 'PNG', margin, y, 80, imgHeight);
-                        } catch (e) { console.error("PDF Image Error", e) }
-
-                        y += imgHeight + spacing;
-                    }
-                });
-            }
-
-            // Save to Firestore
-            const pdfBase64 = doc.output('datauristring');
-            updateData({ generatedPdf: pdfBase64 });
-
+            const doc = syncPdfToFirestore();
             doc.save("Patent_Application_Draft.pdf");
         }
     };
@@ -374,11 +380,22 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <h2 className="text-2xl font-bold flex items-center gap-2"><FileText className="text-purple-600" /> Patent Drafting Workspace</h2>
-                            <p className="text-slate-500 text-sm">Review and edit the generated description below.</p>
+                            <p className="text-slate-500 text-sm">Review and edit the generated description below. Your changes are saved automatically.</p>
                         </div>
-                        {!images.some(img => img !== null) && (
-                            <Button onClick={generateFigures} icon={<ImageIcon size={16} />}>Generate Missing Figures</Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={syncPdfToFirestore}
+                                icon={<RefreshCw size={14} />}
+                                title="Sync this draft to the Project Overview PDF"
+                            >
+                                Sync with Overview
+                            </Button>
+                            {!images.some(img => img !== null) && (
+                                <Button size="sm" onClick={generateFigures} icon={<ImageIcon size={16} />}>Generate Missing Figures</Button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

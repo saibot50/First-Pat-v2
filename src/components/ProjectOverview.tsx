@@ -114,24 +114,56 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                             )}
                         </div>
 
-                        {/* Figures */}
-                        <div className={`p-4 rounded-lg border transition-all ${hasFigures ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
+                        {/* Patent Live Draft Status */}
+                        <div className={`p-4 rounded-lg border transition-all ${hasPatentDraft ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
                             <div className="flex items-center gap-3 mb-4">
-                                <div className={`p-2 rounded-lg ${hasFigures ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
-                                    <ImageIcon size={24} />
+                                <div className={`p-2 rounded-lg ${hasPatentDraft ? 'bg-amber-50 text-amber-600' : 'bg-slate-200 text-slate-400'}`}>
+                                    <Play size={24} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-sm truncate">Technical Drawings</h3>
-                                    <p className="text-xs text-slate-500">{hasFigures ? '3 Images Saved' : 'No images'}</p>
+                                    <h3 className="font-semibold text-sm truncate">Draft Workspace</h3>
+                                    <p className="text-xs text-slate-500">{hasPatentDraft ? 'Live Document (Editable)' : 'Not started yet'}</p>
                                 </div>
                             </div>
-                            {hasFigures && (
+                            {hasPatentDraft && (
                                 <Button variant="outline" size="sm" className="w-full" onClick={() => onNavigateToStage(AppStage.PATENT_WIZARD)}>
-                                    <ArrowRight size={14} className="mr-2" /> View Drawings
+                                    <ArrowRight size={14} className="mr-2" /> Open Editor
                                 </Button>
                             )}
                         </div>
                     </div>
+
+                    {/* Figures Gallery */}
+                    {hasFigures && (
+                        <div className="mt-8 space-y-4">
+                            <h2 className="text-lg font-bold flex items-center gap-2 px-1">
+                                <ImageIcon className="text-emerald-600" size={20} /> Technical Drawings
+                            </h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {patentData.images.map((img, i) => {
+                                    if (!img) return null;
+                                    const labels = ["Main Invention", "Alt. Embodiment", "Block Diagram"];
+                                    return (
+                                        <div key={i} className="bg-white border border-slate-200 rounded-lg overflow-hidden group">
+                                            <div className="aspect-square bg-slate-50 flex items-center justify-center p-2">
+                                                <img src={img} alt={labels[i]} className="max-w-full max-h-full object-contain" />
+                                            </div>
+                                            <div className="p-3 border-t border-slate-100 flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{labels[i]}</span>
+                                                <button
+                                                    onClick={() => downloadBase64(img, `${title}_Fig_${i + 1}.png`)}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                    title="Download Figure"
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Progress Sidebar */}
