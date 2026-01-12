@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Image as ImageIcon, Download, Play, FileCode, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
+import { FileText, Image as ImageIcon, Download, Play, FileCode, CheckCircle2, Clock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { PPRData, PatentData, AppStage } from '../types';
 import { Button } from './ui/Button';
 
@@ -20,6 +20,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     onContinue,
     onNavigateToStage
 }) => {
+    const hasAgreementPdf = !!pprData.agreementPdf;
     const hasPPRPdf = !!pprData.generatedPdf;
     const hasPPRHtml = !!pprData.generatedHtml;
     const hasPatentDraft = !!patentData.draftDescription;
@@ -60,6 +61,23 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                     </h2>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Confidentiality Agreement */}
+                        <div className={`p-4 rounded-lg border transition-all ${hasAgreementPdf ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className={`p-2 rounded-lg ${hasAgreementPdf ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-400'}`}>
+                                    <ShieldCheck size={24} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-sm truncate">Confidentiality Agreement</h3>
+                                    <p className="text-xs text-slate-500">{hasAgreementPdf ? 'Accepted & Saved' : 'Not signed yet'}</p>
+                                </div>
+                            </div>
+                            {hasAgreementPdf && (
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => downloadBase64(pprData.agreementPdf!, `Confidentiality_Agreement_${title}.pdf`)}>
+                                    <Download size={14} className="mr-2" /> Download
+                                </Button>
+                            )}
+                        </div>
                         {/* PPR PDF */}
                         <div className={`p-4 rounded-lg border transition-all ${hasPPRPdf ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
                             <div className="flex items-center gap-3 mb-4">

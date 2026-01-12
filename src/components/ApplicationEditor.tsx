@@ -213,7 +213,8 @@ export const ApplicationEditor: React.FC = () => {
         setPatentData(newData);
     };
 
-    const handleAgreementSigned = () => {
+    const handleAgreementSigned = (pdfBase64: string) => {
+        setPprData(prev => ({ ...prev, agreementPdf: pdfBase64 }));
         setCurrentStage(AppStage.ANALYSER);
     };
 

@@ -80,7 +80,8 @@ export interface PPRData {
   forecast: Forecast;
   leanCanvas: LeanCanvas;
   // Generated content storage
-  generatedPdf?: string; // base64 or URL
+  agreementPdf?: string; // base64 or URL for Confidentiality Agreement
+  generatedPdf?: string; // base64 or URL for PPR
   generatedHtml?: string;
   judgement?: PatentJudgement | null;
 }
