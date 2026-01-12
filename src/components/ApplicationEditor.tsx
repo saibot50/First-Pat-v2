@@ -327,6 +327,8 @@ export const ApplicationEditor: React.FC = () => {
                         onUpdate={handlePPRUpdate}
                         onBack={handlePPRBack}
                         onProceedToPatent={handleProceedToPatent}
+                        hasPatentDraft={!!patentData.draftDescription}
+                        onNavigateToStage={setCurrentStage}
                     />
                 )}
 

@@ -21,6 +21,8 @@ interface Props {
   onUpdate: (data: PPRData) => void;
   onBack: () => void;
   onProceedToPatent?: () => void;
+  hasPatentDraft?: boolean;
+  onNavigateToStage?: (stage: AppStage) => void;
 }
 
 const STEPS = [
@@ -38,7 +40,15 @@ const STEPS = [
   'Final Analysis'
 ];
 
-export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onUpdate, onBack, onProceedToPatent }) => {
+export const ProductPotentialReport: React.FC<Props> = ({
+  ideaData,
+  pprData,
+  onUpdate,
+  onBack,
+  onProceedToPatent,
+  hasPatentDraft,
+  onNavigateToStage
+}) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStage, setLoadingStage] = useState<string>('');
@@ -805,122 +815,120 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
     );
   };
 
-  const renderFinalAnalysis = () => (
-    <div className="flex flex-col items-center justify-center py-10 space-y-8 text-center">
-      <div className="bg-blue-600 p-6 rounded-full text-white shadow-xl">
-        <BrainCircuit size={48} />
-      </div>
+  const renderFinalAnalysis = () => {
+    if (!judgement) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-8 text-center">
+          <div className="bg-blue-600 p-6 rounded-full text-white shadow-xl">
+            <BrainCircuit size={48} />
+          </div>
 
-      <div className="space-y-4 max-w-lg">
-        <h2 className="text-2xl font-bold text-slate-900">Final Analysis</h2>
-        <p className="text-slate-600">
-          You have completed all sections. We will now perform a final patentability assessment and prepare your download package.
-        </p>
-      </div>
+          <div className="space-y-4 max-w-lg">
+            <h2 className="text-2xl font-bold text-slate-900">Final Analysis</h2>
+            <p className="text-slate-600">
+              You have completed all sections. We will now perform a final patentability assessment and prepare your download package.
+            </p>
+          </div>
 
-      <Button
-        onClick={handleFinalAnalysis}
-        size="lg"
-        className="w-full max-w-md h-14 text-lg shadow-lg shadow-blue-200"
-        icon={<Sparkles className="mr-2" />}
-      >
-        Generate Final Assessment
-      </Button>
-    </div>
-  );
+          <Button
+            onClick={handleFinalAnalysis}
+            size="lg"
+            className="w-full max-w-md h-14 text-lg shadow-lg shadow-blue-200"
+            icon={<Sparkles className="mr-2" />}
+          >
+            Generate Final Assessment
+          </Button>
+        </div>
+      );
+    }
 
-  const renderJudgement = () => {
-    if (!judgement) return null;
     const flattenedData = getFlattenedData();
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-8 animate-in fade-in duration-500">
         <div className="text-center py-4">
-          <h2 className="text-3xl font-bold text-slate-900">Report Package Ready</h2>
-          <p className="text-slate-500 mt-2">Your data has been processed.</p>
+          <h2 className="text-3xl font-extrabold text-slate-900">Report Package Ready</h2>
+          <p className="text-slate-500 mt-2 font-medium tracking-wide uppercase text-xs">UK IPO Compliance Audit Complete</p>
         </div>
 
-        <div className={`p-6 rounded-xl border-2 ${judgement.isPatentable ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'}`}>
-          <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-            {judgement.isPatentable ? <CheckCircle className="text-green-600" /> : <Sparkles className="text-amber-600" />}
-            Patentability Assessment
-          </h3>
-          <p className="text-slate-800 mb-4 whitespace-pre-line">{judgement.rationale}</p>
+        <div className={`p-8 rounded-2xl border-2 relative overflow-hidden ${judgement.isPatentable ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200 bg-slate-50/50'}`}>
+          <div className="absolute top-0 right-0 p-4">
+            {judgement.isPatentable ? (
+              <CheckCircle className="text-emerald-500 opacity-10" size={120} />
+            ) : (
+              <AlertTriangle className="text-slate-500 opacity-10" size={120} />
+            )}
+          </div>
 
-          {judgement.isPatentable ? (
-            <div className="mt-4 p-4 bg-green-100 rounded-lg flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <PenTool className="text-green-700" size={24} />
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-3">
+              {judgement.isPatentable ? <CheckCircle className="text-emerald-600" size={28} /> : <Sparkles className="text-amber-600" size={28} />}
+              Patentability Assessment
+            </h3>
+            <p className="text-slate-800 leading-relaxed text-lg mb-8 whitespace-pre-line">
+              {judgement.rationale}
+            </p>
+
+            <div className={`p-6 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all ${judgement.isPatentable
+              ? 'bg-white border-emerald-200 shadow-sm'
+              : 'bg-white border-slate-200 shadow-sm'
+              }`}>
+              <div className="flex items-start gap-4">
+                <div className={`p-3 rounded-xl ${judgement.isPatentable ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                  <PenTool size={24} />
+                </div>
                 <div>
-                  <h4 className="font-bold text-green-900">Ready to Draft</h4>
-                  <p className="text-sm text-green-800">Your idea may have patent potential. Start the drafting process now.</p>
+                  <h4 className="font-bold text-slate-900">Next Recommended Step</h4>
+                  <p className="text-sm text-slate-600">
+                    {judgement.isPatentable
+                      ? 'Your idea shows strong patent potential. Start the drafting process now.'
+                      : 'While a standard patent might be difficult, we can explore other protection routes.'}
+                  </p>
                 </div>
               </div>
-              <Button onClick={onProceedToPatent} variant="primary" className="bg-green-700 hover:bg-green-800 border-green-800">
-                Draft and Apply for Patent
+              <Button
+                onClick={onProceedToPatent}
+                size="lg"
+                className={judgement.isPatentable ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+                icon={hasPatentDraft ? <ArrowRight size={20} /> : <BrainCircuit size={20} />}
+              >
+                {hasPatentDraft ? "Resume Patent Application" : "Draft and Apply for Patent"}
               </Button>
             </div>
-          ) : (
-            <div className="mt-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-100 p-3 rounded-full text-blue-600 shrink-0">
-                  <PhoneCall size={24} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 mb-1">Contact Innovate Design</h4>
-                  <p className="text-sm text-slate-600 mb-3">
-                    While a standard patent might be difficult, there are other ways to protect and monetize your idea (Design Rights, Copyright, Prototyping).
-                    Speak to our experts to explore your options.
-                  </p>
-                  <div className="flex gap-3">
-                    <Button variant="outline" size="sm" icon={<PhoneCall size={14} />}>
-                      0123 456 7890
-                    </Button>
-                    <Button variant="outline" size="sm" icon={<Mail size={14} />}>
-                      Email Us
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
+        {/* Action Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <h3 className="font-bold text-lg flex items-center gap-2">
               <FileDown className="text-blue-600" /> Downloads
             </h3>
             <p className="text-sm text-slate-600">
-              Click below to generate and download your professional PDF report.
+              Generate and download your professional PDF report.
             </p>
 
-            <div className="flex flex-col gap-3 py-4">
+            <div className="flex flex-col gap-3 py-2">
               <div className="grid grid-cols-2 gap-3">
                 <Button
                   onClick={handlePreviewHtml}
-                  size="lg"
                   variant="outline"
-                  className="w-full py-6 text-xl font-bold tracking-wide"
-                  icon={<Search size={24} />}
+                  className="w-full"
+                  icon={<Search size={18} />}
                   isLoading={isGeneratingFile}
                 >
                   Preview HTML
                 </Button>
                 <Button
                   onClick={handleDownloadServerPDF}
-                  size="lg"
-                  className="w-full py-6 text-xl bg-blue-600 hover:bg-blue-700 shadow-lg text-white font-bold tracking-wide"
-                  icon={<FileText size={24} />}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  icon={<FileText size={18} />}
                   isLoading={isGeneratingFile}
                 >
                   Download PDF
                 </Button>
               </div>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-lg text-xs text-slate-500">
-              <p><strong>Note:</strong> This process runs entirely in your browser.</p>
             </div>
           </div>
 
@@ -937,7 +945,7 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
               </button>
             </div>
 
-            <div className={`flex-1 overflow-y-auto bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-xs text-slate-700 transition-all ${showVariables ? 'max-h-[400px]' : 'max-h-[200px]'}`}>
+            <div className={`flex-1 overflow-y-auto bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-[10px] text-slate-700 transition-all ${showVariables ? 'max-h-[300px]' : 'max-h-[120px]'}`}>
               <table className="w-full text-left">
                 <tbody>
                   {Object.keys(flattenedData).map(key => (
@@ -954,6 +962,66 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
               </table>
             </div>
           </div>
+        </div>
+
+        {/* Process Roadmap / Quick Navigation */}
+        <div className="pt-8 border-t border-slate-200">
+          <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2 uppercase tracking-widest text-xs">
+            <Globe className="text-slate-400" size={16} /> Process Roadmap
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <button
+              onClick={() => onNavigateToStage?.(AppStage.ANALYSER)}
+              className="group p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-blue-300 hover:shadow-md transition-all"
+            >
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Step 1</div>
+              <div className="text-sm font-bold text-slate-700 group-hover:text-blue-600 flex items-center justify-between">
+                Idea Analyser <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+              </div>
+            </button>
+            <button
+              onClick={() => setCurrentStep(1)} // Jump to Customers
+              className="group p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-blue-300 hover:shadow-md transition-all"
+            >
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Step 2</div>
+              <div className="text-sm font-bold text-slate-700 group-hover:text-blue-600 flex items-center justify-between">
+                Market Details <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+              </div>
+            </button>
+            <button
+              onClick={() => onProceedToPatent?.()}
+              className="group p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-purple-300 hover:shadow-md transition-all"
+            >
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Step 3</div>
+              <div className="text-sm font-bold text-slate-700 group-hover:text-purple-600 flex items-center justify-between">
+                Patent Draft <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+              </div>
+            </button>
+            <button
+              onClick={() => onNavigateToStage?.(AppStage.OVERVIEW)}
+              className="group p-4 bg-white rounded-xl border border-slate-200 text-left hover:border-emerald-300 hover:shadow-md transition-all"
+            >
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Finish</div>
+              <div className="text-sm font-bold text-slate-700 group-hover:text-emerald-600 flex items-center justify-between">
+                Project Hub <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+              </div>
+            </button>
+          </div>
+
+          <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center gap-3">
+            <AlertTriangle className="text-amber-500" size={20} />
+            <div className="text-xs text-amber-800 leading-relaxed">
+              <strong>Notice:</strong> Making changes to your report data will not automatically update this assessment. If you have edited your business plan, click
+              <button onClick={() => setJudgement(null)} className="mx-1 font-bold underline hover:text-amber-900 border-none bg-transparent cursor-pointer">Reset & Regenerate</button>
+              to ensure the UK IPO analysis remains accurate.
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-start pt-4">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentStep(Math.max(0, STEPS.indexOf('Lean Canvas')))} icon={<ArrowLeft size={16} />}>
+            Back to Lean Canvas
+          </Button>
         </div>
       </div>
     );
@@ -1008,15 +1076,6 @@ export const ProductPotentialReport: React.FC<Props> = ({ ideaData, pprData, onU
         )}
       </div>
     );
-  }
-
-  if (judgement) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8 bg-white rounded-xl shadow-lg border border-slate-200">
-        {renderJudgement()}
-        {renderPreviewModal()}
-      </div>
-    )
   }
 
   return (
