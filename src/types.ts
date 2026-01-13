@@ -124,6 +124,7 @@ export interface PatentData {
   // Generated content storage
   generatedPdf?: string; // base64 or URL
   disclaimerPdf?: string; // base64 or URL
+  filingFormPdf?: string; // base64 or URL
 }
 
 export interface ApplicationSummary {

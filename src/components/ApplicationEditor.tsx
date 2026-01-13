@@ -296,7 +296,7 @@ export const ApplicationEditor: React.FC = () => {
     };
 
     const handlePatentBack = () => {
-        setCurrentStage(AppStage.PPR_WIZARD);
+        setCurrentStage(AppStage.OVERVIEW);
     }
 
     if (isLoading) {

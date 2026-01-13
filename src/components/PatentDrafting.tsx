@@ -462,6 +462,65 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         return finalUrl;
     };
 
+    const generateFilingFormPDF = async () => {
+        const doc = new jsPDF();
+        const margin = 20;
+        let y = 30;
+
+        doc.setFontSize(18);
+        doc.text("Patent Filing Details (Form 1)", margin, y);
+        y += 15;
+
+        const addRow = (label: string, value: string) => {
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(label, margin, y);
+            y += 6;
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            const split = doc.splitTextToSize(value || 'N/A', 170);
+            doc.text(split, margin, y);
+            y += (split.length * 7) + 5;
+        };
+
+        addRow("Reference", details.reference || 'N/A');
+        addRow("Title of Invention", details.inventionTitle);
+        addRow("Applicant(s)", details.name);
+        addRow("Address", details.address);
+        addRow("Inventors", details.areApplicantsInventors ? "Same as applicants" : (details.otherInventors || 'N/A'));
+
+        y += 5;
+        doc.line(margin, y, 190, y);
+        y += 10;
+
+        addRow("Digital Signature", details.signature);
+        addRow("Date", details.date);
+
+        y += 5;
+        doc.line(margin, y, 190, y);
+        y += 10;
+
+        doc.setFontSize(14);
+        doc.text("Contact Information", margin, y);
+        y += 10;
+
+        addRow("Contact Name", details.contactName);
+        addRow("Email", details.contactEmail);
+        addRow("Phone", details.contactPhone);
+
+        const pdfBase64 = doc.output('datauristring');
+        let finalUrl = pdfBase64;
+
+        if (appId && auth.currentUser) {
+            try {
+                finalUrl = await uploadAsset(auth.currentUser.uid, appId, 'filing-form.pdf', pdfBase64);
+            } catch (e) {
+                console.error("Failed to upload filing form PDF", e);
+            }
+        }
+        return finalUrl;
+    };
+
     const downloadPDF = async (type: 'receipt' | 'application') => {
         if (type === 'receipt') {
             const doc = new jsPDF();
@@ -865,13 +924,30 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             </div>
 
             <Button
-                disabled={!details.name || !details.signature || !details.contactEmail}
-                onClick={() => setStage('SUCCESS')}
+                disabled={!details.name || !details.signature || !details.contactEmail || isLoading}
+                onClick={async () => {
+                    setIsLoading(true);
+                    setError(null);
+                    setLoadingText("Finalizing your application...");
+                    try {
+                        const formUrl = await generateFilingFormPDF();
+                        updateData({ filingFormPdf: formUrl, internalStage: 'SUCCESS' });
+                        if (onForceSave) {
+                            await onForceSave({ ...data, filingFormPdf: formUrl, internalStage: 'SUCCESS' });
+                        }
+                    } catch (e: any) {
+                        console.error(e);
+                        setError("Failed to submit application. Please try again.");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }}
                 size="lg"
                 className="w-full mt-4"
             >
-                Submit Application
+                {isLoading ? 'Processing...' : 'Submit Application'}
             </Button>
+            {error && <p className="text-red-500 text-xs mt-2 text-center">{error}</p>}
         </div>
     );
 

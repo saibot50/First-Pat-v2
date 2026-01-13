@@ -46,6 +46,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     const hasPatentDraft = !!patentData.draftDescription;
     const hasPatentPdf = !!patentData.generatedPdf;
     const hasDisclaimerPdf = !!patentData.disclaimerPdf;
+    const hasFilingFormPdf = !!patentData.filingFormPdf;
     const hasFigures = patentData.images.some(img => img !== null) || patentData.uploadedImages.some(img => img !== null);
 
     const handleDownload = (uri: string, filename: string) => {
@@ -187,6 +188,24 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                                 {hasDisclaimerPdf && (
                                     <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(patentData.disclaimerPdf!, `${title}_Disclaimer.pdf`)}>
+                                        <Download size={14} className="mr-2" /> Download
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Patent Filing Details Form */}
+                            <div className={`p-4 rounded-lg border transition-all ${hasFilingFormPdf ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={`p-2 rounded-lg ${hasFilingFormPdf ? 'bg-amber-50 text-amber-600' : 'bg-slate-200 text-slate-400'}`}>
+                                        <FileCheck size={24} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-semibold text-sm truncate">Filing Details (Form 1)</h3>
+                                        <p className="text-xs text-slate-500">{hasFilingFormPdf ? 'Final Filing Info' : 'Not submitted yet'}</p>
+                                    </div>
+                                </div>
+                                {hasFilingFormPdf && (
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(patentData.filingFormPdf!, `${title}_Filing_Details.pdf`)}>
                                         <Download size={14} className="mr-2" /> Download
                                     </Button>
                                 )}
