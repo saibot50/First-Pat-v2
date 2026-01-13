@@ -1,9 +1,18 @@
 import express from "express";
 import { google } from "googleapis";
 import { chromium } from "playwright";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+
+// Serve static files from the 'dist' directory
+const distPath = path.join(__dirname, "..", "dist");
+app.use(express.static(distPath));
 
 
 import { renderTemplate } from "./services/templateRenderer.js";
@@ -190,5 +199,16 @@ app.post("/generate-report", async (req, res) => {
 });
 
 const port = process.env.PORT || 8080;
+
+// Catch-all route to serve index.html for React Router
+app.get("*", (req, res) => {
+    // If it's not an API call, serve the index.html
+    if (!req.path.startsWith("/api") && !req.path.startsWith("/report")) {
+        res.sendFile(path.join(distPath, "index.html"));
+    } else {
+        res.status(404).send("Not Found");
+    }
+});
+
 app.listen(port, () => console.log(`Listening on ${port}`));
 // push comment 2
