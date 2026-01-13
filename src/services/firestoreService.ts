@@ -114,10 +114,11 @@ export const saveApplication = async (userId: string, appId: string, data: Parti
     const appRef = doc(db, 'users', userId, 'applications', appId);
 
     try {
-        const updates = sanitizeData({
-            ...data,
+        const sanitized = sanitizeData(data);
+        const updates = {
+            ...sanitized,
             updatedAt: serverTimestamp()
-        });
+        };
 
         await updateDoc(appRef, updates);
         console.log(`[Firestore] Application ${appId} saved successfully`);

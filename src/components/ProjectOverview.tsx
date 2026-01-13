@@ -1,5 +1,24 @@
 import React, { useState } from 'react';
-import { FileText, Image as ImageIcon, Download, Play, FileCode, CheckCircle2, Clock, ArrowRight, ShieldCheck, Mail, MessageSquare } from 'lucide-react';
+import {
+    FileText,
+    Download,
+    Play,
+    FileCode,
+    ExternalLink,
+    Clock,
+    ArrowRight,
+    History,
+    CheckCircle2,
+    LayoutDashboard,
+    Mail,
+    Phone,
+    User,
+    FileCheck,
+    MessageSquare,
+    ShieldCheck,
+    Play as PlayIcon,
+    Image as ImageIcon
+} from 'lucide-react';
 import { PPRData, PatentData, AppStage } from '../types';
 import { Button } from './ui/Button';
 
@@ -26,6 +45,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
     const hasPPRHtml = !!pprData.generatedHtml;
     const hasPatentDraft = !!patentData.draftDescription;
     const hasPatentPdf = !!patentData.generatedPdf;
+    const hasDisclaimerPdf = !!patentData.disclaimerPdf;
     const hasFigures = patentData.images.some(img => img !== null) || patentData.uploadedImages.some(img => img !== null);
 
     const handleDownload = (uri: string, filename: string) => {
@@ -149,6 +169,24 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                                 {hasPatentPdf && (
                                     <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(patentData.generatedPdf!, `${title}_Patent_Draft.pdf`)}>
+                                        <Download size={14} className="mr-2" /> Download
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Legal Disclaimer */}
+                            <div className={`p-4 rounded-lg border transition-all ${hasDisclaimerPdf ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-dashed border-slate-300 opacity-60'}`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={`p-2 rounded-lg ${hasDisclaimerPdf ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>
+                                        <ShieldCheck size={24} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-semibold text-sm truncate">Legal Disclaimer</h3>
+                                        <p className="text-xs text-slate-500">{hasDisclaimerPdf ? 'Drafting Stage Agreement' : 'Not signed yet'}</p>
+                                    </div>
+                                </div>
+                                {hasDisclaimerPdf && (
+                                    <Button variant="outline" size="sm" className="w-full" onClick={() => handleDownload(patentData.disclaimerPdf!, `${title}_Disclaimer.pdf`)}>
                                         <Download size={14} className="mr-2" /> Download
                                     </Button>
                                 )}

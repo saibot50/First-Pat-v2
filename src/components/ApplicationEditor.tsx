@@ -117,10 +117,23 @@ export const ApplicationEditor: React.FC = () => {
             }
 
             try {
+                // Reset state to initials before loading new data to prevent bleed
+                setProjectTitle('New Project');
+                setFullName('');
+                setCurrentStage(AppStage.OVERVIEW);
+                setResumeStage(AppStage.AGREEMENT);
+                setIdeaData(INITIAL_IDEA_DATA);
+                setPprData(INITIAL_PPR_DATA);
+                setPatentData(INITIAL_PATENT_DATA);
+                setCompletedStages([]);
+
                 const data = await getApplication(auth.currentUser.uid, appId);
                 if (data) {
-                    if (data.title) setProjectTitle(data.title);
-                    if (data.fullName) setFullName(data.fullName);
+                    setProjectTitle(data.title || 'Untitled Project');
+                    setFullName(data.fullName || '');
+                    if (data.ideaData && Object.keys(data.ideaData).length > 0) setIdeaData(data.ideaData);
+                    if (data.pprData && Object.keys(data.pprData).length > 0) setPprData(data.pprData);
+                    if (data.patentData && Object.keys(data.patentData).length > 0) setPatentData(data.patentData);
 
                     // Restore the saved stage
                     if (data.stage && data.stage !== AppStage.OVERVIEW) {

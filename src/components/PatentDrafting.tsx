@@ -410,6 +410,58 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         return doc;
     };
 
+    const generateDisclaimerPDF = async () => {
+        const doc = new jsPDF();
+        const margin = 20;
+        let y = 30;
+
+        doc.setFontSize(18);
+        doc.text("Legal Disclaimer & Acknowledgement", margin, y);
+        y += 15;
+
+        doc.setFontSize(12);
+        doc.text(`Project: ${ideaData.title}`, margin, y); y += 10;
+        doc.text(`Applicant: ${fullName || details.name || 'N/A'}`, margin, y); y += 10;
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, margin, y); y += 20;
+
+        doc.setFontSize(11);
+        const acknowledgements = [
+            `1. I, ${fullName || details.name || 'the undersigned'}, acknowledge that patent applications carry inherent risks and there are no guarantees of grant.`,
+            "2. I understand that this tool aids drafting but does not replace professional legal counsel.",
+            "3. I understand that the £450 fee covers the drafting and review service, not official UK IPO filing fees at this stage.",
+            "4. I confirm the idea is my own and I am the primary inventor."
+        ];
+
+        acknowledgements.forEach(text => {
+            const split = doc.splitTextToSize(text, 170);
+            if (y + (split.length * 7) > 280) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(split, margin, y);
+            y += (split.length * 7) + 5;
+        });
+
+        y += 10;
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text("This document serves as a record of your digital acknowledgement and agreement to the terms specified above.", margin, y);
+        y += 10;
+        doc.text("Signed Digitally via IP-Pat Platform", margin, y);
+
+        const pdfBase64 = doc.output('datauristring');
+        let finalUrl = pdfBase64;
+
+        if (appId && auth.currentUser) {
+            try {
+                finalUrl = await uploadAsset(auth.currentUser.uid, appId, 'legal-disclaimer.pdf', pdfBase64);
+            } catch (e) {
+                console.error("Failed to upload disclaimer PDF", e);
+            }
+        }
+        return finalUrl;
+    };
+
     const downloadPDF = async (type: 'receipt' | 'application') => {
         if (type === 'receipt') {
             const doc = new jsPDF();
@@ -468,11 +520,27 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             </div>
 
             <Button
-                disabled={!Object.values(disclaimers).every(Boolean)}
-                onClick={() => setStage('PAYMENT')}
+                disabled={!Object.values(disclaimers).every(Boolean) || isLoading}
+                onClick={async () => {
+                    setIsLoading(true);
+                    setError(null);
+                    setLoadingText("Saving legal acknowledgement...");
+                    try {
+                        const url = await generateDisclaimerPDF();
+                        updateData({ disclaimerPdf: url, internalStage: 'PAYMENT' });
+                        if (onForceSave) {
+                            await onForceSave({ ...data, disclaimerPdf: url, internalStage: 'PAYMENT' });
+                        }
+                    } catch (e: any) {
+                        console.error(e);
+                        setError("Failed to save legal agreement. Please try again.");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                }}
                 className="w-full"
             >
-                Agree & Continue
+                {isLoading ? 'Processing...' : 'Agree & Continue'}
             </Button>
         </div>
     );
