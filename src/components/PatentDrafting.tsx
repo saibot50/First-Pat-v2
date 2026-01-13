@@ -15,6 +15,7 @@ interface Props {
     onBack: () => void;
     fullName?: string;
     onForceSave?: (data: PatentData) => Promise<void>;
+    onReturnToHub?: () => void;
 }
 
 type Stage = 'DISCLAIMER' | 'PAYMENT' | 'DETAILS' | 'DRAFTING' | 'FILING' | 'SUCCESS';
@@ -33,7 +34,7 @@ const INITIAL_DETAILS: ApplicantDetails = {
     contactPhone: ''
 };
 
-export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack, fullName, onForceSave }) => {
+export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack, fullName, onForceSave, onReturnToHub }) => {
     const { appId } = useParams();
     // UI State (Local)
     const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +44,8 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
     const [progress, setProgress] = useState(0);
+    // Cache for base64 images to avoid CORS issues during PDF generation
+    const [cachedImages, setCachedImages] = useState<Record<number, string>>({});
 
     // Simulated progress effect
     useEffect(() => {
@@ -111,6 +114,26 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         }
     };
 
+    // --- Helpers for Local Cache Persistence ---
+    const getCachedImage = (idx: number): string | null => {
+        if (!appId) return null;
+        try {
+            return localStorage.getItem(`patent-img-${appId}-${idx}`);
+        } catch (e) {
+            console.warn("Failed to read from localStorage", e);
+            return null;
+        }
+    };
+
+    const saveCachedImage = (idx: number, data: string) => {
+        if (!appId) return;
+        try {
+            localStorage.setItem(`patent-img-${appId}-${idx}`, data);
+        } catch (e) {
+            console.warn("Failed to save to localStorage (quota exceeded?)", e);
+        }
+    };
+
     const handleImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -121,6 +144,10 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 try {
                     const result = reader.result as string;
                     let finalValue = result;
+
+                    // Update memory cache and persistent storage
+                    setCachedImages(prev => ({ ...prev, [index]: result }));
+                    saveCachedImage(index, result);
 
                     if (appId && auth.currentUser) {
                         const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${index + 1}.png`, result);
@@ -164,6 +191,14 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         newImages[index] = null; // Clear from display too
 
         updateData({ images: newImages, uploadedImages: newUploads });
+
+        // Clear cache
+        if (appId) localStorage.removeItem(`patent-img-${appId}-${index}`);
+        setCachedImages(prev => {
+            const next = { ...prev };
+            delete next[index];
+            return next;
+        });
     };
 
     const generateFigures = async () => {
@@ -191,6 +226,10 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             await Promise.all(indicesToGenerate.map(async (idx) => {
                 const imgBase64 = await generateSinglePatentFigure(draft, types[idx]);
                 let finalImg = imgBase64;
+
+                // Update memory cache and persistent storage
+                setCachedImages(prev => ({ ...prev, [idx]: imgBase64 }));
+                saveCachedImage(idx, imgBase64);
 
                 if (appId && auth.currentUser) {
                     try {
@@ -222,6 +261,10 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             const types: ('main' | 'alt' | 'diagram')[] = ['main', 'alt', 'diagram'];
             const imgBase64 = await generateSinglePatentFigure(draft, types[index]);
             let finalImg = imgBase64;
+
+            // Update memory cache and persistent storage
+            setCachedImages(prev => ({ ...prev, [index]: imgBase64 }));
+            saveCachedImage(index, imgBase64);
 
             if (appId && auth.currentUser) {
                 try {
@@ -273,6 +316,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             y += lineHeight;
         });
 
+        // Loop through all images (dynamic length)
         if (images.length > 0 && images.some(img => img !== null)) {
             doc.addPage();
             y = 20;
@@ -280,16 +324,12 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             doc.text("Drawings", margin, y);
             y += 20;
 
-            const labels = ["Fig 1. Main Invention", "Fig 2. Alternative Embodiment", "Fig 3. System Block Diagram"];
-
-            // For image rendering in PDF, we need the base64. 
-            // If it's a Storage URL, we might need a workaround, but for now jspdf might struggle with URLs.
-            // Actually, we usually have the base64 in the generator anyway.
-            // Let's assume the 'img' here might be a URL.
-
             for (let i = 0; i < images.length; i++) {
                 const img = images[i];
                 if (img) {
+                    console.log(`[PDF Debug] Processing Image ${i}. URL:`, img.substring(0, 50) + "...");
+                    console.log(`[PDF Debug] Cache status for ${i}:`, !!cachedImages[i]);
+
                     const imgHeight = 80;
                     const spacing = 20;
 
@@ -298,24 +338,51 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                         y = 20;
                     }
 
+                    const label = i === 0 ? "Fig 1. Main Invention" :
+                        i === 1 ? "Fig 2. Alternative Embodiment" :
+                            i === 2 ? "Fig 3. System Block Diagram" :
+                                `Fig ${i + 1}. Additional View`;
+
                     doc.setFontSize(10);
-                    doc.text(labels[i], margin, y - 5);
+                    doc.text(label, margin, y - 5);
 
                     try {
                         let finalImg = img;
-                        // If it's a Storage URL, we might need to fetch it as a Data URL for jsPDF
-                        if (img.startsWith('http')) {
-                            const response = await fetch(img);
-                            const blob = await response.blob();
-                            finalImg = await new Promise((resolve) => {
-                                const reader = new FileReader();
-                                reader.onloadend = () => resolve(reader.result as string);
-                                reader.readAsDataURL(blob);
-                            });
+                        const cached = cachedImages[i] || getCachedImage(i);
+
+                        // Check cache first (avoids CORS)
+                        if (cached) {
+                            console.log(`[PDF] Using local cache for image ${i}`);
+                            finalImg = cached;
                         }
+                        // If it's a Storage URL and not cached, try to fetch
+                        else if (img.startsWith('http')) {
+                            console.log(`[PDF] Cache miss for ${i}, attempting fetch...`);
+                            try {
+                                const response = await fetch(img, { mode: 'cors' });
+                                if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+                                const blob = await response.blob();
+                                finalImg = await new Promise((resolve) => {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => resolve(reader.result as string);
+                                    reader.readAsDataURL(blob);
+                                });
+                            } catch (fetchErr) {
+                                console.warn(`Failed to fetch image ${i} for PDF, skipping image.`, fetchErr);
+                                doc.setTextColor(150);
+                                doc.text("[Image could not be loaded]", margin, y + 40);
+                                doc.setTextColor(0);
+                                y += imgHeight + spacing;
+                                continue;
+                            }
+                        }
+
                         doc.addImage(finalImg, 'PNG', margin, y, 80, imgHeight);
                     } catch (e) {
-                        console.error("PDF Image Error", e);
+                        console.error("PDF Image Add Error", e);
+                        doc.setTextColor(150);
+                        doc.text("[Image Error]", margin, y + 40);
+                        doc.setTextColor(0);
                     }
 
                     y += imgHeight + spacing;
@@ -328,6 +395,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
 
         if (appId && auth.currentUser) {
             try {
+                // Upload the generated PDF to storage for persistence
                 const url = await uploadAsset(auth.currentUser.uid, appId, 'patent-draft.pdf', pdfBase64);
                 finalPdfValue = url;
             } catch (storageErr) {
@@ -361,8 +429,13 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             doc.text("Thank you for your submission. Our experts will review your filing shortly.", margin, y);
             doc.save("Filing_Receipt.pdf");
         } else {
-            const doc = await syncPdfToFirestore();
-            doc.save("Patent_Application_Draft.pdf");
+            try {
+                const doc = await syncPdfToFirestore();
+                doc.save("Patent_Application_Draft.pdf");
+            } catch (e) {
+                console.error("Failed to download application PDF:", e);
+                alert("Failed to generate or download the application PDF. Please try again.");
+            }
         }
     };
 
@@ -750,7 +823,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 <Button variant="outline" onClick={() => downloadPDF('application')} icon={<Download size={18} />}>
                     Download Application (PDF)
                 </Button>
-                <Button variant="ghost" onClick={onBack} className="mt-4">Return to Dashboard</Button>
+                <Button variant="ghost" onClick={onReturnToHub || onBack} className="mt-4">Return to Dashboard</Button>
             </div>
         </div>
     );

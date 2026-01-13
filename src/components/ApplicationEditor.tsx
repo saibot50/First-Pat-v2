@@ -382,6 +382,7 @@ export const ApplicationEditor: React.FC = () => {
                         onBack={handlePatentBack}
                         fullName={fullName}
                         onForceSave={async (data) => await handleSave(undefined, { patentData: data })}
+                        onReturnToHub={() => setCurrentStage(AppStage.OVERVIEW)}
                     />
                 )}
             </main>
