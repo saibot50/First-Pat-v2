@@ -41,6 +41,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
 
     return (
         <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+            <h1 className="text-3xl font-bold text-slate-900 border-b border-slate-200 pb-4">Project Overview</h1>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
@@ -111,7 +112,7 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 </div>
                             </div>
                             {hasPPRHtml && (
-                                <Button variant="outline" size="sm" className="w-full" onClick={() => onNavigateToStage(AppStage.PPR_WIZARD)}>
+                                <Button variant="outline" size="sm" className="w-full" onClick={() => window.open(pprData.generatedHtml, '_blank')}>
                                     <Play size={14} className="mr-2" /> View Preview
                                 </Button>
                             )}

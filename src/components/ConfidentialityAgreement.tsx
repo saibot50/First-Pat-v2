@@ -1,5 +1,6 @@
-import React from 'react';
-import { ShieldCheck, Lock, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, Lock, FileText, User } from 'lucide-react';
+import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { jsPDF } from 'jspdf';
 
@@ -8,7 +9,9 @@ interface Props {
 }
 
 export const ConfidentialityAgreement: React.FC<Props> = ({ onAgree }) => {
+  const [fullName, setFullName] = useState('');
   const handleAgree = () => {
+    if (!fullName.trim()) return;
     const doc = new jsPDF();
     const margin = 20;
     let y = 30;
@@ -20,7 +23,7 @@ export const ConfidentialityAgreement: React.FC<Props> = ({ onAgree }) => {
     doc.setFontSize(10);
     doc.text(`Date of Acceptance: ${new Date().toLocaleDateString()}`, margin, y);
     y += 10;
-    doc.text("Between: INNOVATE DESIGN and USER", margin, y);
+    doc.text(`Between: INNOVATE DESIGN and ${fullName.toUpperCase()}`, margin, y);
     y += 15;
 
     doc.setFontSize(12);
@@ -110,12 +113,23 @@ export const ConfidentialityAgreement: React.FC<Props> = ({ onAgree }) => {
             <p className="italic text-slate-500 mt-4 border-t pt-4">
               By clicking "I Agree & Proceed" below, you confirm that you understand Innovate Design will keep your idea private, safe and secure.
             </p>
+
+            <div className="pt-4 border-t">
+              <Input
+                label="Your Full Name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Type your name here to sign"
+                icon={<User size={18} />}
+                required
+              />
+            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-          <Button onClick={handleAgree} size="lg" className="w-full sm:w-auto">
+          <Button onClick={handleAgree} size="lg" className="w-full sm:w-auto" disabled={!fullName.trim()}>
             I Agree & Proceed
           </Button>
         </div>

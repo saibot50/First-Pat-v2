@@ -96,7 +96,8 @@ export const ApplicationEditor: React.FC = () => {
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
     const [projectTitle, setProjectTitle] = useState('New Project');
-    const [currentStage, setCurrentStage] = useState<AppStage>(AppStage.AGREEMENT);
+    const [currentStage, setCurrentStage] = useState<AppStage>(AppStage.OVERVIEW);
+    const [resumeStage, setResumeStage] = useState<AppStage>(AppStage.AGREEMENT);
     const [ideaData, setIdeaData] = useState<IdeaData>(INITIAL_IDEA_DATA);
     const [pprData, setPprData] = useState<PPRData>(INITIAL_PPR_DATA);
     const [patentData, setPatentData] = useState<PatentData>(INITIAL_PATENT_DATA);
@@ -120,8 +121,8 @@ export const ApplicationEditor: React.FC = () => {
                     if (data.title) setProjectTitle(data.title);
 
                     // Restore the saved stage
-                    if (data.stage) {
-                        setCurrentStage(data.stage as AppStage);
+                    if (data.stage && data.stage !== AppStage.OVERVIEW) {
+                        setResumeStage(data.stage as AppStage);
                     }
 
                     if (data.ideaData) setIdeaData({ ...INITIAL_IDEA_DATA, ...data.ideaData });
@@ -185,7 +186,7 @@ export const ApplicationEditor: React.FC = () => {
         try {
             await saveApplication(auth.currentUser.uid, appId, {
                 title: projectTitle, // Matches Dashboard/Creation name
-                stage: forceStage || currentStage,
+                stage: forceStage || (currentStage === AppStage.OVERVIEW ? resumeStage : currentStage),
                 ideaData,
                 pprData,
                 patentData,
@@ -320,16 +321,10 @@ export const ApplicationEditor: React.FC = () => {
                 {currentStage === AppStage.OVERVIEW && (
                     <ProjectOverview
                         title={projectTitle}
-                        stage={currentStage}
+                        stage={resumeStage}
                         pprData={pprData}
                         patentData={patentData}
-                        onContinue={async () => {
-                            // Find the logical next stage based on pprData/patentData presence
-                            // For now, load from getApplication data was originally saved stage
-                            const data = await getApplication(auth.currentUser!.uid, appId!);
-                            if (data?.stage) setCurrentStage(data.stage as AppStage);
-                            else setCurrentStage(AppStage.ANALYSER);
-                        }}
+                        onContinue={() => setCurrentStage(resumeStage)}
                         onNavigateToStage={setCurrentStage}
                     />
                 )}

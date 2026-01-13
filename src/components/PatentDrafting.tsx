@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import { auth } from '../services/firebase';
@@ -43,6 +43,26 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
     const [isEnhancing, setIsEnhancing] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null);
+    const [progress, setProgress] = useState(0);
+
+    // Simulated progress effect
+    useEffect(() => {
+        let timer: any;
+        if (isLoading) {
+            setProgress(0);
+            timer = setInterval(() => {
+                setProgress(prev => {
+                    if (prev >= 90) return 90; // Stall at 90% until done
+                    return prev + (prev < 30 ? 5 : prev < 70 ? 2 : 1);
+                });
+            }, 600);
+        } else {
+            setProgress(100);
+            const timeout = setTimeout(() => setProgress(0), 500);
+            return () => clearTimeout(timeout);
+        }
+        return () => clearInterval(timer);
+    }, [isLoading]);
 
     // Derived Data (with safe defaults)
     const stage = (data.internalStage as Stage) || 'DISCLAIMER';
@@ -447,9 +467,25 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
     const renderDrafting = () => (
         <div className="max-w-5xl mx-auto space-y-8">
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                    <Loader2 className="animate-spin text-blue-600 mb-4" size={48} />
-                    <p className="text-lg font-medium text-slate-700 animate-pulse">{loadingText}</p>
+                <div className="flex flex-col items-center justify-center py-20 w-full max-w-xl mx-auto text-center">
+                    <Loader2 className="animate-spin text-blue-600 mb-6" size={56} />
+                    <p className="text-xl font-bold text-slate-900 mb-2">Creating your Patent Draft</p>
+                    <p className="text-slate-500 mb-8">{loadingText}</p>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 rounded-full h-3 mb-2 overflow-hidden border border-slate-200">
+                        <div
+                            className="bg-blue-600 h-full transition-all duration-500 ease-out flex items-center justify-end px-2"
+                            style={{ width: `${progress}%` }}
+                        >
+                            {progress > 15 && <span className="text-[8px] text-white font-bold">{Math.round(progress)}%</span>}
+                        </div>
+                    </div>
+                    <div className="flex justify-between w-full text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        <span>Researching</span>
+                        <span>Drafting</span>
+                        <span>Polishing</span>
+                    </div>
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">

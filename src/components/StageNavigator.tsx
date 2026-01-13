@@ -9,6 +9,7 @@ interface StageNavigatorProps {
 }
 
 const STAGES = [
+    { key: AppStage.OVERVIEW, label: 'Overview' },
     { key: AppStage.AGREEMENT, label: 'Agreement' },
     { key: AppStage.ANALYSER, label: 'Idea Analyser' },
     { key: AppStage.PPR_WIZARD, label: 'PPR Wizard' },
@@ -29,10 +30,10 @@ export const StageNavigator: React.FC<StageNavigatorProps> = ({ currentStage, on
                             <button
                                 onClick={() => canNavigate && onNavigate(stage.key)}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${isCurrent
-                                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                                        : canNavigate
-                                            ? 'text-slate-600 hover:bg-slate-50'
-                                            : 'text-slate-300 cursor-not-allowed'
+                                    ? 'bg-blue-50 text-blue-700 font-semibold'
+                                    : canNavigate
+                                        ? 'text-slate-600 hover:bg-slate-50'
+                                        : 'text-slate-300 cursor-not-allowed'
                                     }`}
                                 disabled={!canNavigate}
                             >
