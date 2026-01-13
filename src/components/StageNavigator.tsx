@@ -10,7 +10,6 @@ interface StageNavigatorProps {
 
 const STAGES = [
     { key: AppStage.OVERVIEW, label: 'Overview' },
-    { key: AppStage.AGREEMENT, label: 'Agreement' },
     { key: AppStage.ANALYSER, label: 'Idea Analyser' },
     { key: AppStage.PPR_WIZARD, label: 'PPR Wizard' },
     { key: AppStage.PATENT_WIZARD, label: 'Patent Drafting' },

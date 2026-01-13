@@ -138,42 +138,81 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         const file = e.target.files?.[0];
         if (file) {
             setIsLoading(true);
-            setLoadingText("Uploading drawing...");
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                try {
-                    const result = reader.result as string;
-                    let finalValue = result;
+            setLoadingText("Optimizing and uploading drawing...");
 
-                    // Update memory cache and persistent storage
-                    setCachedImages(prev => ({ ...prev, [index]: result }));
-                    saveCachedImage(index, result);
+            // Resize image to ensure it fits in localStorage and PDFs are optimized
+            const resizeImage = (file: File): Promise<string> => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (readerEvent) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 1200;
+                            const MAX_HEIGHT = 1200;
+                            let width = img.width;
+                            let height = img.height;
 
-                    if (appId && auth.currentUser) {
-                        const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${index + 1}.png`, result);
-                        finalValue = url;
-                    }
+                            if (width > height) {
+                                if (width > MAX_WIDTH) {
+                                    height *= MAX_WIDTH / width;
+                                    width = MAX_WIDTH;
+                                }
+                            } else {
+                                if (height > MAX_HEIGHT) {
+                                    width *= MAX_HEIGHT / height;
+                                    height = MAX_HEIGHT;
+                                }
+                            }
 
-                    const newUploads = [...uploadedImages];
-                    while (newUploads.length <= index) newUploads.push(null);
-                    newUploads[index] = finalValue;
-
-                    const newImages = [...images];
-                    while (newImages.length <= index) newImages.push(null);
-                    newImages[index] = finalValue;
-
-                    updateData({ images: newImages, uploadedImages: newUploads });
-                    if (onForceSave) {
-                        await onForceSave({ ...data, images: newImages, uploadedImages: newUploads });
-                    }
-                } catch (err) {
-                    console.error("Upload failed", err);
-                    alert("Failed to upload image to permanent storage.");
-                } finally {
-                    setIsLoading(false);
-                }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx?.drawImage(img, 0, 0, width, height);
+                            // Compressing to JPEG 0.8 is usually good balance
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                            resolve(dataUrl);
+                        };
+                        img.onerror = reject;
+                        img.src = readerEvent.target?.result as string;
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
             };
-            reader.readAsDataURL(file);
+
+            try {
+                const optimizedResult = await resizeImage(file);
+                let finalValue = optimizedResult;
+
+                // Update memory cache and persistent storage with optimized image
+                setCachedImages(prev => ({ ...prev, [index]: optimizedResult }));
+                saveCachedImage(index, optimizedResult);
+
+                if (appId && auth.currentUser) {
+                    // Upload the optimized image to save bandwidth and storage
+                    const url = await uploadAsset(auth.currentUser.uid, appId, `figure-${index + 1}.jpg`, optimizedResult);
+                    finalValue = url;
+                }
+
+                const newUploads = [...uploadedImages];
+                while (newUploads.length <= index) newUploads.push(null);
+                newUploads[index] = finalValue;
+
+                const newImages = [...images];
+                while (newImages.length <= index) newImages.push(null);
+                newImages[index] = finalValue;
+
+                updateData({ images: newImages, uploadedImages: newUploads });
+                if (onForceSave) {
+                    await onForceSave({ ...data, images: newImages, uploadedImages: newUploads });
+                }
+            } catch (err) {
+                console.error("Upload failed", err);
+                alert("Failed to process and upload image.");
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -377,7 +416,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                             }
                         }
 
-                        doc.addImage(finalImg, 'PNG', margin, y, 80, imgHeight);
+                        doc.addImage(finalImg, margin, y, 80, imgHeight);
                     } catch (e) {
                         console.error("PDF Image Add Error", e);
                         doc.setTextColor(150);
