@@ -26,6 +26,7 @@ interface Props {
   onProceedToPatent?: () => void;
   hasPatentDraft?: boolean;
   onNavigateToStage?: (stage: AppStage) => void;
+  onForceSave?: (data: PPRData) => Promise<void>;
 }
 
 const STEPS = [
@@ -50,7 +51,8 @@ export const ProductPotentialReport: React.FC<Props> = ({
   onBack,
   onProceedToPatent,
   hasPatentDraft,
-  onNavigateToStage
+  onNavigateToStage,
+  onForceSave
 }) => {
   const { appId } = useParams();
   const [currentStep, setCurrentStep] = useState(0);
@@ -400,6 +402,9 @@ export const ProductPotentialReport: React.FC<Props> = ({
       }
 
       onUpdate({ ...pprData, generatedHtml: finalValue });
+      if (onForceSave) {
+        await onForceSave({ ...pprData, generatedHtml: finalValue });
+      }
 
       // Force content type to text/html to ensure browser treats it correctly
       const htmlBlob = new Blob([blob], { type: 'text/html' });
@@ -443,6 +448,9 @@ export const ProductPotentialReport: React.FC<Props> = ({
       }
 
       onUpdate({ ...pprData, generatedPdf: finalValue });
+      if (onForceSave) {
+        await onForceSave({ ...pprData, generatedPdf: finalValue });
+      }
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

@@ -15,6 +15,7 @@ interface Props {
     data: PatentData;
     onUpdate: (data: PatentData) => void;
     onBack: () => void;
+    onForceSave?: (data: PatentData) => Promise<void>;
 }
 
 type Stage = 'DISCLAIMER' | 'PAYMENT' | 'DETAILS' | 'DRAFTING' | 'FILING' | 'SUCCESS';
@@ -33,7 +34,7 @@ const INITIAL_DETAILS: ApplicantDetails = {
     contactPhone: ''
 };
 
-export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack }) => {
+export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack, onForceSave }) => {
     const { appId } = useParams();
     // UI State (Local)
     const [isLoading, setIsLoading] = useState(false);
@@ -80,6 +81,9 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         try {
             const result = await generatePatentDescription(ideaData, { components, variations });
             updateData({ draftDescription: result, internalStage: 'DRAFTING' });
+            if (onForceSave) {
+                await onForceSave({ ...data, draftDescription: result, internalStage: 'DRAFTING' });
+            }
         } catch (e: any) {
             console.error(e);
             setError(e.message || "Failed to generate draft. Please try again.");
@@ -111,6 +115,9 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                     newImages[index] = finalValue;
 
                     updateData({ images: newImages, uploadedImages: newUploads });
+                    if (onForceSave) {
+                        await onForceSave({ ...data, images: newImages, uploadedImages: newUploads });
+                    }
                 } catch (err) {
                     console.error("Upload failed", err);
                     alert("Failed to upload image to permanent storage.");
@@ -169,6 +176,9 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                 updates[idx] = finalImg;
             }));
             updateData({ images: updates });
+            if (onForceSave) {
+                await onForceSave({ ...data, images: updates });
+            }
         } catch (e: any) {
             console.error(e);
             setError(e.message || "Failed to generate figures.");
@@ -198,6 +208,9 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             const update = [...images];
             update[index] = finalImg;
             updateData({ images: update });
+            if (onForceSave) {
+                await onForceSave({ ...data, images: update });
+            }
         } catch (err) {
             console.error("Reroll failed", err);
         } finally {
@@ -296,6 +309,9 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         }
 
         updateData({ generatedPdf: finalPdfValue });
+        if (onForceSave) {
+            await onForceSave({ ...data, generatedPdf: finalPdfValue });
+        }
         return doc;
     };
 

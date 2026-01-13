@@ -5,7 +5,7 @@ import { getApplication, saveApplication } from '../services/firestoreService';
 import { uploadAsset } from '../services/storageService';
 import { Loader2, Save, LogOut } from 'lucide-react';
 import { Button } from './ui/Button';
-import { IdeaData, AppStage, PPRData, PatentData } from '../types';
+import { IdeaData, AppStage, PPRData, PatentData, ApplicationData } from '../types';
 import { ConfidentialityAgreement } from './ConfidentialityAgreement';
 import { IdeaAnalyser } from './IdeaAnalyser';
 import { ProductPotentialReport } from './ProductPotentialReport';
@@ -178,7 +178,7 @@ export const ApplicationEditor: React.FC = () => {
         }
     }, [currentStage]);
 
-    const handleSave = async (forceStage?: AppStage) => {
+    const handleSave = async (forceStage?: AppStage, overrides?: Partial<ApplicationData>) => {
         if (!appId || !auth.currentUser || isLoading) return;
 
         setIsSaving(true);
@@ -188,7 +188,8 @@ export const ApplicationEditor: React.FC = () => {
                 stage: forceStage || currentStage,
                 ideaData,
                 pprData,
-                patentData
+                patentData,
+                ...overrides
             });
             setLastSaved(new Date());
         } catch (error) {
@@ -292,11 +293,17 @@ export const ApplicationEditor: React.FC = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => navigate('/')}
+                        onClick={async () => {
+                            if (!isSaving) {
+                                await handleSave();
+                                navigate('/');
+                            }
+                        }}
+                        disabled={isSaving}
                         className="text-slate-500"
                         title="Exit to Dashboard"
                     >
-                        <LogOut size={16} />
+                        {isSaving ? <Loader2 className="animate-spin" size={16} /> : <LogOut size={16} />}
                     </Button>
                 </div>
             </Header>
@@ -349,6 +356,7 @@ export const ApplicationEditor: React.FC = () => {
                         onProceedToPatent={handleProceedToPatent}
                         hasPatentDraft={!!patentData.draftDescription}
                         onNavigateToStage={setCurrentStage}
+                        onForceSave={async (data) => await handleSave(undefined, { pprData: data })}
                     />
                 )}
 
@@ -358,6 +366,7 @@ export const ApplicationEditor: React.FC = () => {
                         data={patentData}
                         onUpdate={handlePatentUpdate}
                         onBack={handlePatentBack}
+                        onForceSave={async (data) => await handleSave(undefined, { patentData: data })}
                     />
                 )}
             </main>

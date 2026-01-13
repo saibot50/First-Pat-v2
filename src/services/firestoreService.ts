@@ -9,23 +9,11 @@ import {
     query,
     orderBy,
     serverTimestamp,
+
+
     Timestamp
 } from 'firebase/firestore';
-
-export interface ApplicationSummary {
-    id: string;
-    title: string;
-    stage: string;
-    updatedAt: Date | null;
-    createdAt: Date | null;
-}
-
-export interface ApplicationData extends ApplicationSummary {
-    ideaData?: any;
-    pprData?: any;
-    patentData?: any;
-    userId: string;
-}
+import { ApplicationData, ApplicationSummary } from '../types';
 
 // Collection References
 const getUsersCollection = () => collection(db, 'users');

@@ -124,3 +124,18 @@ export interface PatentData {
   // Generated content storage
   generatedPdf?: string; // base64 or URL
 }
+
+export interface ApplicationSummary {
+  id: string;
+  title: string;
+  stage: string;
+  updatedAt: Date | null;
+  createdAt: Date | null;
+}
+
+export interface ApplicationData extends ApplicationSummary {
+  ideaData?: any;
+  pprData?: any;
+  patentData?: any;
+  userId: string;
+}
