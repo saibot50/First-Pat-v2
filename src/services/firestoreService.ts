@@ -6,11 +6,10 @@ import {
     getDoc,
     getDocs,
     updateDoc,
+    deleteDoc,
     query,
     orderBy,
     serverTimestamp,
-
-
     Timestamp
 } from 'firebase/firestore';
 import { ApplicationData, ApplicationSummary } from '../types';
@@ -128,6 +127,17 @@ export const saveApplication = async (userId: string, appId: string, data: Parti
         if (error.code === 'unavailable' || error.message?.includes('too large')) {
             console.warn("[Firestore] Document might be too large (>1MB). Large base64 strings detected.");
         }
+        throw error;
+    }
+};
+
+export const deleteApplication = async (userId: string, appId: string): Promise<void> => {
+    const appRef = doc(db, 'users', userId, 'applications', appId);
+    try {
+        await deleteDoc(appRef);
+        console.log(`[Firestore] Application ${appId} deleted successfully`);
+    } catch (error: any) {
+        console.error(`[Firestore] Error deleting application ${appId}:`, error);
         throw error;
     }
 };

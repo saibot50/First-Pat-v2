@@ -124,7 +124,13 @@ export const ApplicationEditor: React.FC = () => {
 
                     // Restore the saved stage
                     if (data.stage && data.stage !== AppStage.OVERVIEW) {
-                        setResumeStage(data.stage as AppStage);
+                        const savedStage = data.stage as AppStage;
+                        setResumeStage(savedStage);
+
+                        // If it's a "fresh" project (no agreement signed), go straight to AGREEMENT
+                        if (savedStage === AppStage.AGREEMENT && !data.pprData?.agreementPdf) {
+                            setCurrentStage(AppStage.AGREEMENT);
+                        }
                     }
 
                     if (data.ideaData) setIdeaData({ ...INITIAL_IDEA_DATA, ...data.ideaData });

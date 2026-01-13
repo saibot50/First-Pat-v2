@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FolderOpen, Loader2 } from 'lucide-react';
+import { Plus, FolderOpen, Loader2, Trash2, AlertCircle } from 'lucide-react';
 import { auth } from '../services/firebase';
-import { getUserApplications, createApplication } from '../services/firestoreService';
+import { getUserApplications, createApplication, deleteApplication } from '../services/firestoreService';
 import { ApplicationSummary } from '../types';
 import { Header } from './Header';
 import { Button } from './ui/Button';
@@ -15,7 +15,11 @@ export const Dashboard: React.FC = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectTitle, setNewProjectTitle] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+
+    const unsubmittedCount = apps.filter(app => app.stage !== 'SUCCESS').length;
+    const canCreate = unsubmittedCount < 10;
 
     useEffect(() => {
         const load = async () => {
@@ -43,7 +47,7 @@ export const Dashboard: React.FC = () => {
     }, []);
 
     const handleCreate = async () => {
-        if (!newProjectTitle.trim() || !auth.currentUser) return;
+        if (!newProjectTitle.trim() || !auth.currentUser || !canCreate) return;
         setIsCreating(true);
         setError(null);
         try {
@@ -56,13 +60,40 @@ export const Dashboard: React.FC = () => {
         }
     };
 
+    const handleDelete = async (e: React.MouseEvent, appId: string, title: string) => {
+        e.stopPropagation();
+        if (!auth.currentUser) return;
+        if (!window.confirm(`Are you sure you want to delete the project "${title}"? This action cannot be undone.`)) return;
+
+        setIsDeleting(appId);
+        try {
+            await deleteApplication(auth.currentUser.uid, appId);
+            setApps(prev => prev.filter(app => app.id !== appId));
+        } catch (e: any) {
+            console.error("Failed to delete project", e);
+            alert("Failed to delete project: " + e.message);
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
             <Header />
             <div className="max-w-5xl mx-auto px-4 py-12">
-                <div className="flex justify-between items-center mb-8">
-                    <h1 className="text-3xl font-bold">Your Projects</h1>
-                    <Button onClick={() => setShowCreateModal(true)} icon={<Plus size={20} />}>
+                <div className="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold">Your Projects</h1>
+                        <p className="text-sm text-slate-500 mt-1">
+                            Active Drafts: <span className={`font-bold ${unsubmittedCount >= 8 ? 'text-amber-600' : 'text-slate-700'}`}>{unsubmittedCount}/10</span>
+                            {unsubmittedCount >= 10 && <span className="text-red-600 ml-2 font-medium"> (Limit Reached)</span>}
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => canCreate ? setShowCreateModal(true) : alert("Maximum of 10 unsubmitted projects reached. Please complete or delete an existing project before starting a new one.")}
+                        icon={<Plus size={20} />}
+                        className={!canCreate ? 'opacity-50 cursor-not-allowed' : ''}
+                    >
                         New Project
                     </Button>
                 </div>
@@ -80,10 +111,22 @@ export const Dashboard: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {apps.map(app => (
                             <div key={app.id}
-                                className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group"
+                                className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer group relative"
                                 onClick={() => navigate(`/app/${app.id}`)}
                             >
-                                <h3 className="font-bold text-lg mb-2 group-hover:text-blue-600 truncate">{app.title}</h3>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="font-bold text-lg group-hover:text-blue-600 truncate flex-1">{app.title}</h3>
+                                    {app.stage !== 'SUCCESS' && (
+                                        <button
+                                            onClick={(e) => handleDelete(e, app.id, app.title)}
+                                            className="p-1.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all ml-2"
+                                            title="Delete Project"
+                                            disabled={isDeleting === app.id}
+                                        >
+                                            {isDeleting === app.id ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Trash2 size={16} />}
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="text-xs text-slate-500 space-y-1">
                                     <p>Stage: <span className="font-medium text-slate-700">{app.stage}</span></p>
                                     <p>Updated: {app.updatedAt instanceof Date ? app.updatedAt.toLocaleDateString() : (app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : 'Just now')}</p>
