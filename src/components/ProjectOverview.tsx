@@ -188,14 +188,15 @@ export const ProjectOverview: React.FC<ProjectOverviewProps> = ({
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     {patentData.images.map((img, i) => {
                                         if (!img) return null;
-                                        const labels = ["Main Invention", "Alt. Embodiment", "Block Diagram"];
+                                        const standardLabels = ["Main Invention", "Alt. Embodiment", "Block Diagram"];
+                                        const label = i < standardLabels.length ? standardLabels[i] : `Figure ${i + 1}`;
                                         return (
                                             <div key={i} className="bg-white border border-slate-200 rounded-lg overflow-hidden group">
                                                 <div className="aspect-square bg-slate-50 flex items-center justify-center p-2">
-                                                    <img src={img} alt={labels[i]} className="max-w-full max-h-full object-contain" />
+                                                    <img src={img} alt={label} className="max-w-full max-h-full object-contain" />
                                                 </div>
                                                 <div className="p-3 border-t border-slate-100 flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{labels[i]}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
                                                     <button
                                                         onClick={() => handleDownload(img, `${title}_Fig_${i + 1}.png`)}
                                                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"

@@ -86,7 +86,14 @@ export const ProductPotentialReport: React.FC<Props> = ({
     }
 
     if (stepName === 'Competitor Research') {
-      handleCompetitorResearch();
+      // Only run research if we don't have data yet
+      const hasData = pprData.competitors && pprData.competitors[0] && pprData.competitors[0].name;
+      if (!hasData) {
+        handleCompetitorResearch();
+      } else {
+        // Skip ahead if we already have data
+        setCurrentStep(prev => prev + 1);
+      }
     } else if (stepName === 'Financials' && !pprData.financials.rrp && !hasAttemptedFinancials) {
       handleAutoFinancials();
     }

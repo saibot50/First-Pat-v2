@@ -128,9 +128,11 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                     }
 
                     const newUploads = [...uploadedImages];
+                    while (newUploads.length <= index) newUploads.push(null);
                     newUploads[index] = finalValue;
 
                     const newImages = [...images];
+                    while (newImages.length <= index) newImages.push(null);
                     newImages[index] = finalValue;
 
                     updateData({ images: newImages, uploadedImages: newUploads });
@@ -146,6 +148,12 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             };
             reader.readAsDataURL(file);
         }
+    };
+
+    const handleAddFigure = () => {
+        const newImages = [...images, null];
+        const newUploads = [...uploadedImages, null];
+        updateData({ images: newImages, uploadedImages: newUploads });
     };
 
     const handleRemoveImage = (index: number) => {
@@ -165,7 +173,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
         const indicesToGenerate: number[] = [];
         const currentImages = [...images];
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < images.length; i++) {
             if (!uploadedImages[i] && !currentImages[i]) {
                 indicesToGenerate.push(i);
             }
@@ -557,11 +565,11 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-6">
-                                    {[0, 1, 2].map((i) => (
+                                    {images.map((img, i) => (
                                         <div key={i} className="border rounded-lg p-3 bg-slate-50 relative group">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                                    {i === 0 ? "Fig 1. Main Invention" : i === 1 ? "Fig 2. Alt. Embodiment" : "Fig 3. Block Diagram"}
+                                                    {i === 0 ? "Fig 1. Main Invention" : i === 1 ? "Fig 2. Alt. Embodiment" : i === 2 ? "Fig 3. Block Diagram" : `Fig ${i + 1}. Additional View`}
                                                 </p>
 
                                                 <div className="flex items-center gap-2">
@@ -642,6 +650,11 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                                <div className="mt-4">
+                                    <Button variant="outline" size="sm" className="w-full border-dashed" onClick={handleAddFigure}>
+                                        + Add New Figure
+                                    </Button>
                                 </div>
                             </div>
                         </div>
