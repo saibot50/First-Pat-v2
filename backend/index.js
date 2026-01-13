@@ -17,7 +17,7 @@ app.use(express.static(distPath));
 
 import { renderTemplate } from "./services/templateRenderer.js";
 
-app.post("/report/html", async (req, res) => {
+app.post("/api/report/html", async (req, res) => {
     try {
         const data = req.body.data || {};
         const html = renderTemplate("first-patent", data);
@@ -30,7 +30,7 @@ app.post("/report/html", async (req, res) => {
 });
 
 
-app.post("/report/pdf", async (req, res) => {
+app.post("/api/report/pdf", async (req, res) => {
     let browser;
     try {
         const data = req.body.data || {};
@@ -98,7 +98,7 @@ function safeFilename(name) {
         .slice(0, 80) || "report";
 }
 
-app.get("/drive-check", async (_req, res) => {
+app.get("/api/drive-check", async (_req, res) => {
     try {
         const drive = await driveClient();
         const r = await drive.files.get({
@@ -125,7 +125,7 @@ app.get("/drive-check", async (_req, res) => {
  *
  * Returns: application/pdf
  */
-app.post("/generate-report", async (req, res) => {
+app.post("/api/generate-report", async (req, res) => {
     let copiedId = null;
 
     try {
