@@ -5,7 +5,7 @@ import { Button } from './ui/Button';
 import { jsPDF } from 'jspdf';
 
 interface Props {
-  onAgree: (pdfBase64: string) => void;
+  onAgree: (pdfBase64: string, fullName: string) => void;
 }
 
 export const ConfidentialityAgreement: React.FC<Props> = ({ onAgree }) => {
@@ -63,7 +63,7 @@ export const ConfidentialityAgreement: React.FC<Props> = ({ onAgree }) => {
     doc.text("By accepting this agreement electronically, you confirm that you understand and agree to the terms above.", margin, y);
 
     const pdfBase64 = doc.output('datauristring');
-    onAgree(pdfBase64);
+    onAgree(pdfBase64, fullName);
   };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">

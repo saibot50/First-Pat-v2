@@ -11,10 +11,9 @@ import { ShieldCheck, Lock, CreditCard, FileText, Image as ImageIcon, CheckCircl
 import { generatePatentDescription, generatePatentFigures, generateSinglePatentFigure, enhanceFieldContent } from '../services/geminiService';
 
 interface Props {
-    ideaData: IdeaData;
-    data: PatentData;
     onUpdate: (data: PatentData) => void;
     onBack: () => void;
+    fullName?: string;
     onForceSave?: (data: PatentData) => Promise<void>;
 }
 
@@ -34,7 +33,7 @@ const INITIAL_DETAILS: ApplicantDetails = {
     contactPhone: ''
 };
 
-export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack, onForceSave }) => {
+export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBack, fullName, onForceSave }) => {
     const { appId } = useParams();
     // UI State (Local)
     const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +71,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
     const draft = data.draftDescription || '';
     const images = data.images || [null, null, null];
     const uploadedImages = data.uploadedImages || [null, null, null];
-    const details = data.filingDetails || { ...INITIAL_DETAILS, inventionTitle: ideaData.title };
+    const details = data.filingDetails || { ...INITIAL_DETAILS, inventionTitle: ideaData.title, name: fullName || '' };
 
     // Helper to update specific fields
     const updateData = (updates: Partial<PatentData>) => {
@@ -370,7 +369,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
 
             <div className="space-y-4">
                 {[
-                    { k: 'risks', t: 'I acknowledge that patent applications carry inherent risks and there are no guarantees of grant.' },
+                    { k: 'risks', t: `I, ${fullName || 'the undersigned'}, acknowledge that patent applications carry inherent risks and there are no guarantees of grant.` },
                     { k: 'noGuarantee', t: 'I understand that this tool aids drafting but does not replace professional legal counsel.' },
                     { k: 'fees', t: 'I understand that the £450 fee covers the drafting and review service, not official UK IPO filing fees at this stage.' },
                     { k: 'ownership', t: 'I confirm the idea is my own and I am the primary inventor.' }
@@ -457,9 +456,20 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
             )}
 
             <div className="flex justify-end pt-4">
-                <Button onClick={() => generateDraft()} disabled={!components || !variations}>
-                    Generate Patent Draft
-                </Button>
+                {isLoading ? (
+                    <div className="w-full max-w-sm ml-auto text-right space-y-2">
+                        <div className="flex items-center justify-end gap-2 text-blue-600 font-bold text-sm">
+                            <Loader2 className="animate-spin" size={16} /> {loadingText}
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                            <div className="bg-blue-600 h-full transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+                        </div>
+                    </div>
+                ) : (
+                    <Button onClick={() => generateDraft()} disabled={!components || !variations}>
+                        Generate Patent Draft
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -552,7 +562,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                                 <div className="grid grid-cols-1 gap-6">
                                     {[0, 1, 2].map((i) => (
                                         <div key={i} className="border rounded-lg p-3 bg-slate-50 relative group">
-                                            <div className="flex justify-between items-center mb-2">
+                                            <div className="flex items-center justify-between">
                                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                                     {i === 0 ? "Fig 1. Main Invention" : i === 1 ? "Fig 2. Alt. Embodiment" : "Fig 3. Block Diagram"}
                                                 </p>
@@ -605,7 +615,7 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                                                 {regeneratingIndex === i ? (
                                                     <div className="flex flex-col items-center">
                                                         <Loader2 className="animate-spin text-slate-400 mb-2" />
-                                                        <span className="text-xs text-slate-400">Generatiing...</span>
+                                                        <span className="text-xs text-slate-400">Generating...</span>
                                                     </div>
                                                 ) : images[i] ? (
                                                     <>

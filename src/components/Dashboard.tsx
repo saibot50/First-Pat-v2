@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FolderOpen, Loader2 } from 'lucide-react';
 import { auth } from '../services/firebase';
-import { getUserApplications, createApplication, ApplicationSummary } from '../services/firestoreService';
+import { getUserApplications, createApplication } from '../services/firestoreService';
+import { ApplicationSummary } from '../types';
 import { Header } from './Header';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -85,7 +86,7 @@ export const Dashboard: React.FC = () => {
                                 <h3 className="font-bold text-lg mb-2 group-hover:text-blue-600 truncate">{app.title}</h3>
                                 <div className="text-xs text-slate-500 space-y-1">
                                     <p>Stage: <span className="font-medium text-slate-700">{app.stage}</span></p>
-                                    <p>Updated: {app.updatedAt?.toLocaleDateString()}</p>
+                                    <p>Updated: {app.updatedAt instanceof Date ? app.updatedAt.toLocaleDateString() : (app.updatedAt ? new Date(app.updatedAt).toLocaleDateString() : 'Just now')}</p>
                                 </div>
                             </div>
                         ))}

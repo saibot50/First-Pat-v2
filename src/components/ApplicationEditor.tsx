@@ -96,6 +96,7 @@ export const ApplicationEditor: React.FC = () => {
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
     const [projectTitle, setProjectTitle] = useState('New Project');
+    const [fullName, setFullName] = useState('');
     const [currentStage, setCurrentStage] = useState<AppStage>(AppStage.OVERVIEW);
     const [resumeStage, setResumeStage] = useState<AppStage>(AppStage.AGREEMENT);
     const [ideaData, setIdeaData] = useState<IdeaData>(INITIAL_IDEA_DATA);
@@ -119,6 +120,7 @@ export const ApplicationEditor: React.FC = () => {
                 const data = await getApplication(auth.currentUser.uid, appId);
                 if (data) {
                     if (data.title) setProjectTitle(data.title);
+                    if (data.fullName) setFullName(data.fullName);
 
                     // Restore the saved stage
                     if (data.stage && data.stage !== AppStage.OVERVIEW) {
@@ -186,6 +188,7 @@ export const ApplicationEditor: React.FC = () => {
         try {
             await saveApplication(auth.currentUser.uid, appId, {
                 title: projectTitle, // Matches Dashboard/Creation name
+                fullName,
                 stage: forceStage || (currentStage === AppStage.OVERVIEW ? resumeStage : currentStage),
                 ideaData,
                 pprData,
@@ -219,9 +222,10 @@ export const ApplicationEditor: React.FC = () => {
         setPatentData(newData);
     };
 
-    const handleAgreementSigned = async (pdfBase64: string) => {
+    const handleAgreementSigned = async (pdfBase64: string, name: string) => {
         setIsSaving(true);
         try {
+            setFullName(name);
             let finalValue = pdfBase64;
             if (appId && auth.currentUser) {
                 const url = await uploadAsset(auth.currentUser.uid, appId, 'confidentiality-agreement.pdf', pdfBase64);
@@ -229,9 +233,12 @@ export const ApplicationEditor: React.FC = () => {
             }
             setPprData(prev => ({ ...prev, agreementPdf: finalValue }));
             setCurrentStage(AppStage.ANALYSER);
+            // Force save immediately with the name
+            await handleSave(AppStage.ANALYSER, { fullName: name, pprData: { ...pprData, agreementPdf: finalValue } });
         } catch (error) {
             console.error("Failed to upload agreement", error);
             // Fallback to base64 if upload fails? Or just proceed.
+            setFullName(name);
             setPprData(prev => ({ ...prev, agreementPdf: pdfBase64 }));
             setCurrentStage(AppStage.ANALYSER);
         } finally {
@@ -361,6 +368,7 @@ export const ApplicationEditor: React.FC = () => {
                         data={patentData}
                         onUpdate={handlePatentUpdate}
                         onBack={handlePatentBack}
+                        fullName={fullName}
                         onForceSave={async (data) => await handleSave(undefined, { patentData: data })}
                     />
                 )}

@@ -128,6 +128,7 @@ export interface PatentData {
 export interface ApplicationSummary {
   id: string;
   title: string;
+  fullName?: string;
   stage: string;
   updatedAt: Date | null;
   createdAt: Date | null;
