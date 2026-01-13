@@ -124,7 +124,13 @@ export const ApplicationEditor: React.FC = () => {
 
                     // Restore the saved stage
                     if (data.stage && data.stage !== AppStage.OVERVIEW) {
-                        const savedStage = data.stage as AppStage;
+                        let savedStage = data.stage as AppStage;
+
+                        // If agreement is signed, the resume point should be at least the Analyser
+                        if (savedStage === AppStage.AGREEMENT && data.pprData?.agreementPdf) {
+                            savedStage = AppStage.ANALYSER;
+                        }
+
                         setResumeStage(savedStage);
 
                         // If it's a "fresh" project (no agreement signed), go straight to AGREEMENT

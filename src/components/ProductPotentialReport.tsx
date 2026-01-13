@@ -912,7 +912,7 @@ export const ProductPotentialReport: React.FC<Props> = ({
                   <h4 className="font-bold text-slate-900">Next Recommended Step</h4>
                   <p className="text-sm text-slate-600">
                     {judgement.isPatentable
-                      ? 'Your idea shows strong patent potential. Start the drafting process now.'
+                      ? 'Your product idea may have patent potential. Start the drafting process now.'
                       : 'While a standard patent might be difficult, we can explore other protection routes.'}
                   </p>
                 </div>

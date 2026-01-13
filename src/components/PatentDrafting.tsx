@@ -528,9 +528,6 @@ export const PatentDrafting: React.FC<Props> = ({ ideaData, data, onUpdate, onBa
                             >
                                 Sync with Overview
                             </Button>
-                            {!images.some(img => img !== null) && (
-                                <Button size="sm" onClick={generateFigures} icon={<ImageIcon size={16} />}>Generate Missing Figures</Button>
-                            )}
                         </div>
                     </div>
 
