@@ -3,6 +3,12 @@ import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { useNavigate } from 'react-router-dom';
 
+const ALLOWED_DOMAINS = [
+    'innovate-design.com',
+    'innovate-design.co.uk',
+    'innovate-design.fr'
+];
+
 export const FinishSignin: React.FC = () => {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState('Verifying sign-in link...');
@@ -27,6 +33,12 @@ export const FinishSignin: React.FC = () => {
     }, [navigate]);
 
     const completeSignIn = async (emailToUse: string) => {
+        const emailDomain = emailToUse.split('@')[1]?.toLowerCase();
+        if (!ALLOWED_DOMAINS.includes(emailDomain)) {
+            setStatus('Access restricted to internal domains only.');
+            return;
+        }
+
         try {
             await signInWithEmailLink(auth, emailToUse, window.location.href);
             window.localStorage.removeItem('emailForSignIn');

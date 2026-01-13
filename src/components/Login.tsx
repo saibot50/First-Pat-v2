@@ -3,6 +3,12 @@ import { sendSignInLinkToEmail, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { useNavigate } from 'react-router-dom';
 
+const ALLOWED_DOMAINS = [
+    'innovate-design.com',
+    'innovate-design.co.uk',
+    'innovate-design.fr'
+];
+
 export const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
@@ -24,6 +30,13 @@ export const Login: React.FC = () => {
         setLoading(true);
         setError('');
         setMessage('');
+
+        const emailDomain = email.split('@')[1]?.toLowerCase();
+        if (!ALLOWED_DOMAINS.includes(emailDomain)) {
+            setError('Access restricted to innovate-design.com, .co.uk, or .fr emails only.');
+            setLoading(false);
+            return;
+        }
 
         const actionCodeSettings = {
             url: import.meta.env.VITE_AUTH_ACTION_URL || 'http://localhost:5173/finish-signin',
